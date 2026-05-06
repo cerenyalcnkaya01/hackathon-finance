@@ -1,13 +1,18 @@
-﻿using System.Configuration;
-using System.Data;
 using System.Windows;
+using LiveChartsCore.SkiaSharpView;
 
-namespace csharp_ui;
-
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
-public partial class App : Application
+namespace csharp_ui
 {
+    public partial class App : Application
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+            LiveChartsCore.LiveCharts.Configure(config =>
+                config
+                    .AddDefaultMappers()
+                    .AddDarkTheme()
+            );
+        }
+    }
 }
-

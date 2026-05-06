@@ -1,0 +1,11 @@
+{
+  "pythonVersion": "3.14",
+  "pythonPlatform": "Windows",
+  "pythonPath": "C:\\Users\\nehir\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "extraPaths": [
+    "C:\\Users\\nehir\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages",
+    "C:\\Users\\nehir\\AppData\\Local\\Python\\pythoncore-3.14-64"
+  ],
+  "reportMissingModuleSource": false,
+  "reportMissingImports": false
+}
