@@ -85,3 +85,7 @@ Thumbs.db
 .idea/
 .cursor/
 *.log
+
+# LLM Models
+models/
+*.gguf

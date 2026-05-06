@@ -12,7 +12,7 @@ Aşağıdaki yol haritası, 3 kişilik geliştirici ekibi ve AI ajanlarının i�
 
 ## Aşama 2: Veri Çekme ve Analiz Modülü (Python) - [Bekliyor]
 - [ ] Borsa verilerini çekmek için Python scriptlerinin (örn. `yfinance` ile) hazırlanması.
-- [ ] Temel teknik analiz indikatörlerinin (RSI, MACD, MA) hesaplanması.
+- [x] Temel teknik analiz indikatörlerinin (RSI, MACD, MA) hesaplanması.
 - **AI Katkısı (Skills Agent):** İndikatör hesaplama algoritmalarının optimizasyonu.
 
 ## Aşama 3: AI Model Entegrasyonu (Ollama) - [Bekliyor]
