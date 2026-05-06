@@ -16,6 +16,7 @@ namespace csharp_ui.Views
         public double Close { get; set; }
         public double High { get; set; }
         public double Low { get; set; }
+        public int Score { get; set; }
     }
 
     public partial class HomePage : Page
@@ -50,8 +51,9 @@ namespace csharp_ui.Views
             StatusText.Text = "Hisseler taranıyor...";
             StatusSubText.Text = "Piyasa verileri alınıyor...";
 
-            // Fetch screened stocks from backend
-            var results = await _api.GetScreenAsync("bist30", "summary", "3mo");
+            // Fetch screened stocks from backend using the selected indicators
+            var selectedIndicators = _profile.SelectedIndicators.Select(i => i.Id).ToList();
+            var results = await _api.GetScreenAsync("bist30", "summary", "3mo", selectedIndicators);
             
             if (results == null || results.Count == 0)
             {
@@ -86,7 +88,8 @@ namespace csharp_ui.Views
                     Sector = res.Sector,
                     Close = res.Close,
                     High = high,
-                    Low = low
+                    Low = low,
+                    Score = res.Score
                 });
             }
 

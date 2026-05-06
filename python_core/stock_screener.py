@@ -10,7 +10,7 @@ import pandas as pd
 import logging
 from typing import List, Optional
 from python_core.data_fetcher import fetch_recent_data, get_stock_info
-from python_core.indicators import add_all_indicators
+from python_core.cpp_bridge import add_all_indicators_fast as add_all_indicators
 
 # Logger ayarları
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,7 +25,10 @@ BIST_30 = [
     "YKBNK.IS", "PGSUS.IS", "TAVHL.IS", "TOASO.IS", "HEKTS.IS",
     "KOZAL.IS", "FROTO.IS", "TCELL.IS", "EKGYO.IS", "PETKM.IS",
     "SASA.IS",  "KONTR.IS", "ENKAI.IS", "GUBRF.IS", "KRDMD.IS",
-    "TTKOM.IS", "VESTL.IS", "ODAS.IS",  "MGROS.IS", "ISDMR.IS"
+    "TTKOM.IS", "VESTL.IS", "ODAS.IS",  "MGROS.IS", "ISDMR.IS",
+    "ALARK.IS", "ASTOR.IS", "DOAS.IS",  "ENJSA.IS", "TUKAS.IS",
+    "CIMSA.IS", "SOKM.IS",  "AKSEN.IS", "BERA.IS",  "BRSAN.IS",
+    "CANTE.IS", "CWENE.IS", "DOHOL.IS", "EUPWR.IS", "GESAN.IS"
 ]
 
 # ABD Teknoloji Hisseleri
@@ -153,21 +156,13 @@ def screen_summary(symbols: List[str], period: str = "3mo") -> pd.DataFrame:
     """
     Verilen hisse listesi için özet bir tablo oluşturur.
     Her hisse için son fiyat, RSI, MACD ve genel sinyal bilgisini döndürür.
-    
-    Args:
-        symbols (List[str]): Taranacak hisse sembolleri listesi.
-        period (str): Veri çekim periyodu.
-        
-    Returns:
-        pd.DataFrame: Tüm hisseler için özet bilgi tablosu.
     """
     results = []
     
     for symbol in symbols:
         try:
             df = fetch_recent_data(symbol, period=period, interval="1d")
-            if df.empty or len(df) < 30:
-                continue
+            if df.empty or len(df) < 30: continue
                 
             df_ind = add_all_indicators(df)
             last = df_ind.iloc[-1]
@@ -176,25 +171,19 @@ def screen_summary(symbols: List[str], period: str = "3mo") -> pd.DataFrame:
             macd_val = last.get("MACD")
             signal_val = last.get("Signal")
             
-            # Genel sinyal belirleme
             sinyal = "⚪ Nötr"
             if rsi_val is not None and not pd.isna(rsi_val):
-                if rsi_val <= 30:
-                    sinyal = "🟢 Alım"
-                elif rsi_val >= 70:
-                    sinyal = "🔴 Satış"
+                if rsi_val <= 30: sinyal = "🟢 Alım"
+                elif rsi_val >= 70: sinyal = "🔴 Satış"
 
-            # Sektör bilgisini getir (Cache'den gelecek)
             info = get_stock_info(symbol)
             sector = info.get("sector", "Bilinmiyor")
 
             results.append({
-                "Sembol": symbol,
-                "Sektör": sector,
-                "Son Fiyat": round(last["Close"], 2),
+                "Sembol": symbol, "Sektör": sector, "Son Fiyat": round(last["Close"], 2),
                 "RSI_14": round(rsi_val, 2) if rsi_val and not pd.isna(rsi_val) else None,
                 "MACD": round(macd_val, 4) if macd_val and not pd.isna(macd_val) else None,
-                "Sinyal": sinyal
+                "Sinyal": sinyal, "Score": 0
             })
             
         except Exception as e:
@@ -202,6 +191,91 @@ def screen_summary(symbols: List[str], period: str = "3mo") -> pd.DataFrame:
             continue
     
     return pd.DataFrame(results)
+
+def screen_by_custom_indicators(symbols: List[str], period: str = "3mo", indicators: List[str] = []) -> pd.DataFrame:
+    """
+    Kullanıcı tarafından seçilen indikatörlere göre hisseleri tarar, 
+    uyumluluk skoru hesaplar ve en çok uyandan en aza doğru sıralar.
+    """
+    results = []
+    indicators = [i.lower() for i in indicators]
+    
+    for symbol in symbols:
+        try:
+            df = fetch_recent_data(symbol, period=period, interval="1d")
+            if df.empty or len(df) < 30: continue
+            
+            df_ind = add_all_indicators(df)
+            last = df_ind.iloc[-1]
+            close = last["Close"]
+            
+            score = 0
+            signals = []
+            
+            # RSI Kriteri (<30 aşırı satım, AL sinyali)
+            if "rsi" in indicators and "RSI_14" in last and not pd.isna(last["RSI_14"]):
+                if last["RSI_14"] <= 30:
+                    score += 1
+                    signals.append("RSI Al")
+                elif last["RSI_14"] >= 70:
+                    score -= 1
+                    signals.append("RSI Sat")
+                    
+            # MACD Kriteri (MACD > Signal, AL sinyali)
+            if "macd" in indicators and "MACD" in last and "Signal" in last and not pd.isna(last["MACD"]):
+                if last["MACD"] > last["Signal"]:
+                    score += 1
+                    signals.append("MACD Al")
+                else:
+                    score -= 1
+                    signals.append("MACD Sat")
+                    
+            # SMA Kriteri (Fiyat > SMA, AL sinyali)
+            if "sma" in indicators and "SMA_14" in last and not pd.isna(last["SMA_14"]):
+                if close > last["SMA_14"]:
+                    score += 1
+                    signals.append("SMA Al")
+                    
+            # EMA Kriteri (Fiyat > EMA, AL sinyali)
+            if "ema" in indicators and "EMA_14" in last and not pd.isna(last["EMA_14"]):
+                if close > last["EMA_14"]:
+                    score += 1
+                    signals.append("EMA Al")
+                    
+            # Bollinger Bands Kriteri (Fiyat < Alt Bant, AL sinyali)
+            if "bollinger" in indicators and "BBL" in last and not pd.isna(last["BBL"]):
+                if close <= last["BBL"]:
+                    score += 1
+                    signals.append("BB Al")
+                elif close >= last["BBH"]:
+                    score -= 1
+                    signals.append("BB Sat")
+
+            info = get_stock_info(symbol)
+            sector = info.get("sector", "Bilinmiyor")
+
+            sinyal_str = ", ".join(signals) if signals else "Nötr"
+
+            results.append({
+                "Sembol": symbol,
+                "Sektör": sector,
+                "Son Fiyat": round(close, 2),
+                "RSI_14": round(last.get("RSI_14", 0), 2),
+                "MACD": round(last.get("MACD", 0), 4),
+                "Sinyal": sinyal_str,
+                "Score": score
+            })
+            
+        except Exception as e:
+            logger.warning(f"{symbol} custom screening hatası: {str(e)}")
+            continue
+            
+    df_res = pd.DataFrame(results)
+    if not df_res.empty:
+        # Skora göre azalan sırala
+        df_res = df_res.sort_values(by="Score", ascending=False)
+        
+    return df_res
 
 
 # ─── Test Kullanımı ──────────────────────────────────────────────────────────────

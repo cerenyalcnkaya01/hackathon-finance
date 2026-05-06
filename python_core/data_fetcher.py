@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import logging
+import os
 from typing import Optional
 
 # Logger ayarları
@@ -39,30 +40,67 @@ def fetch_historical_data(ticker_symbol: str, start_date: str, end_date: str, in
         logger.error(f"{ticker_symbol} verisi çekilirken hata oluştu: {str(e)}")
         return pd.DataFrame()
 
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "output", "cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
 def fetch_recent_data(ticker_symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
     """
-    Son belirli bir periyoda ait borsa verilerini çeker. RAM cache kullanır.
+    Verileri SSD üzerinde cache'ler. Eğer cache varsa sadece eksik günleri indirir.
     """
-    cache_key = (ticker_symbol, period, interval)
-    if cache_key in _data_cache:
-        logger.info(f"{ticker_symbol} verisi cache'den getirildi.")
-        return _data_cache[cache_key]
+    cache_file = os.path.join(CACHE_DIR, f"{ticker_symbol}_{interval}.csv")
+    df_cached = pd.DataFrame()
+    
+    if os.path.exists(cache_file):
+        try:
+            df_cached = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+            # Ensure index is timezone-aware if needed, but yfinance usually returns tz-aware.
+            if not df_cached.empty:
+                df_cached.index = pd.to_datetime(df_cached.index, utc=True)
+                logger.info(f"{ticker_symbol} verisi SSD cache'den yüklendi. Son tarih: {df_cached.index[-1]}")
+        except Exception as e:
+            logger.warning(f"Cache okuma hatası: {e}")
+            df_cached = pd.DataFrame()
 
-    logger.info(f"{ticker_symbol} için son {period} verisi çekiliyor (Aralık: {interval})...")
     try:
         ticker = yf.Ticker(ticker_symbol)
-        df = ticker.history(period=period, interval=interval)
+        
+        if not df_cached.empty:
+            # Sadece yeni verileri çek (son tarihten bugüne)
+            last_date = df_cached.index[-1]
+            # yfinance start param expects YYYY-MM-DD
+            start_str = last_date.strftime('%Y-%m-%d')
+            logger.info(f"{ticker_symbol} için {start_str} sonrasındaki yeni veriler çekiliyor...")
+            df_new = ticker.history(start=start_str, interval=interval)
+            
+            if not df_new.empty:
+                df_new.index = pd.to_datetime(df_new.index, utc=True)
+                # Aynı günleri üst üste bindirme, yeni olanları ekle
+                df_new = df_new[~df_new.index.isin(df_cached.index)]
+                if not df_new.empty:
+                    df = pd.concat([df_cached, df_new])
+                    logger.info(f"{len(df_new)} yeni satır eklendi.")
+                else:
+                    df = df_cached
+            else:
+                df = df_cached
+        else:
+            logger.info(f"{ticker_symbol} için son {period} verisi sıfırdan çekiliyor...")
+            df = ticker.history(period=period, interval=interval)
+            if not df.empty:
+                df.index = pd.to_datetime(df.index, utc=True)
         
         if df.empty:
-            logger.warning(f"{ticker_symbol} için veri bulunamadı (Periyot: {period}).")
             return pd.DataFrame()
             
-        logger.info(f"{ticker_symbol} verisi başarıyla çekildi. Toplam satır: {len(df)}")
-        _data_cache[cache_key] = df
+        # Kaydet
+        df.to_csv(cache_file)
+        
+        # Son periyodu sınırla (isteğe bağlı, çok büyümemesi için)
+        # return df.tail(1000)
         return df
     except Exception as e:
         logger.error(f"{ticker_symbol} verisi çekilirken hata oluştu: {str(e)}")
-        return pd.DataFrame()
+        return df_cached if not df_cached.empty else pd.DataFrame()
 
 def get_stock_info(ticker_symbol: str) -> dict:
     """

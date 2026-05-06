@@ -38,7 +38,7 @@ class MultiAnalyzeRequest(BaseModel):
 
 class ScreenRequest(BaseModel):
     symbols: List[str] = []; preset: str = "bist30"; period: str = "3mo"
-    screen_type: str = "summary"
+    screen_type: str = "summary"; indicators: List[str] = []
 
 @app.get("/", tags=["System"])
 def root():
@@ -87,8 +87,14 @@ def chart(symbol: str, period: str = "3mo"):
 def screen(req: ScreenRequest):
     syms = BIST_30 if req.preset == "bist30" else US_TECH if req.preset == "us_tech" else req.symbols
     if not syms: raise HTTPException(400, "Sembol listesi gerekli.")
-    fn = {"rsi_oversold": lambda: screen_by_rsi(syms, req.period, signal="oversold"), "rsi_overbought": lambda: screen_by_rsi(syms, req.period, signal="overbought"), "macd_crossover": lambda: screen_by_macd_crossover(syms, req.period)}.get(req.screen_type, lambda: screen_summary(syms, req.period))
-    df = fn()
+    
+    if req.indicators and len(req.indicators) > 0:
+        from python_core.stock_screener import screen_by_custom_indicators
+        df = screen_by_custom_indicators(syms, req.period, req.indicators)
+    else:
+        fn = {"rsi_oversold": lambda: screen_by_rsi(syms, req.period, signal="oversold"), "rsi_overbought": lambda: screen_by_rsi(syms, req.period, signal="overbought"), "macd_crossover": lambda: screen_by_macd_crossover(syms, req.period)}.get(req.screen_type, lambda: screen_summary(syms, req.period))
+        df = fn()
+        
     if not df.empty:
         # Rename columns to match C# models (lowercase)
         rename_map = {
@@ -98,7 +104,8 @@ def screen(req: ScreenRequest):
             "RSI": "rsi",
             "RSI_14": "rsi",
             "MACD": "macd",
-            "Sinyal": "signal"
+            "Sinyal": "signal",
+            "Score": "score"
         }
         df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
     return {"results": df.to_dict("records") if not df.empty else [], "count": len(df), "type": req.screen_type}

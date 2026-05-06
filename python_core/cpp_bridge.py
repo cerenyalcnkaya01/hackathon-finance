@@ -153,6 +153,15 @@ def add_all_indicators_fast(df: pd.DataFrame) -> pd.DataFrame:
         df.loc[df["EMA_14"] == 0, "EMA_14"] = float("nan")
         df.loc[df["RSI_14"] == 0, "RSI_14"] = float("nan")
         
+        # Add BB and ATR via Python fallback since C++ module doesn't have them yet
+        from python_core.indicators import calculate_bbands, calculate_atr
+        bb_df = calculate_bbands(df, column="Close")
+        df = pd.concat([df, bb_df], axis=1)
+        if all(c in df.columns for c in ["High", "Low", "Close"]):
+            df['ATR_14'] = calculate_atr(df, window=14)
+        else:
+            df['ATR_14'] = 0.0
+        
         return df
     else:
         # Python fallback — mevcut fonksiyonu kullan

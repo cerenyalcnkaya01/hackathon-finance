@@ -1,80 +1,72 @@
-﻿import pandas as pd
-import matplotlib.pyplot as plt
-
-# AÇIKLAMA:
-# Bu modül, veri çekme (yfinance vb.) modülü tamamlandığında onunla birleştirilecektir.
-# Şimdilik hazır indikatörleri içeren bir pandas DataFrame'i bekleyecek şekilde tasarlanmıştır.
-# İlerleyen aşamalarda bu grafikler; ya resim dosyası olarak (PNG) kaydedilip C# arayüzüne gönderilebilir,
-# ya da C# arayüzü kendi grafik kütüphanelerini kullanmak isterse sadece JSON verisi dönülecek şekilde revize edilebilir.
+import pandas as pd
+import mplfinance as mpf
+import os
 
 def plot_indicators(df: pd.DataFrame, symbol: str = "Hisse", output_path: str = None):
     """
-    Fiyat verilerini ve hesaplanan indikatörleri (RSI, MACD, MA) tek bir grafikte çizer.
-    Veri çekme scripti hazır olduğunda bu fonksiyon entegre edilerek canlı veya geçmiş veri üzerinden çalıştırılacaktır.
-    
-    Args:
-        df (pd.DataFrame): 'Close', 'SMA_14', 'RSI_14', 'MACD', 'Signal', 'Histogram' 
-                           sütunlarını içeren veri çerçevesi.
-        symbol (str): Grafiği çizilecek hissenin sembolü (Örn: "AAPL", "THYAO.IS").
-        output_path (str, optional): Grafik dosyaya kaydedilmek istenirse dosya yolu (Örn: 'chart.png').
-                                     Belirtilmezse ekranda gösterilir.
+    Fiyat verilerini (Mum Grafiği - Candlestick) ve hesaplanan indikatörleri tek bir grafikte çizer.
+    Artış ve düşüşler renkli olarak belirtilir.
     """
-    # Gerekli sütunların varlığını kontrol et
-    required_columns = ['Close', 'SMA_14', 'RSI_14', 'MACD', 'Signal']
-    for col in required_columns:
-        if col not in df.columns:
-            raise ValueError(f"Eksik sütun: {col}. Lütfen grafiği çizmeden önce indikatörleri hesaplayın.")
-            
-    # Figür ve alt grafikleri (subplots) oluştur
-    # 3 satır: 1. Fiyat ve MA, 2. RSI, 3. MACD
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [2, 1, 1]})
-    fig.suptitle(f"{symbol} Teknik Analiz Grafiği", fontsize=16)
+    # mplfinance için veriyi hazırla (OHLC ve datetime index gereklidir)
+    df_plot = df.copy()
     
-    # 1. Fiyat ve Hareketli Ortalama (SMA)
-    ax1.plot(df.index, df['Close'], label='Kapanış Fiyatı', color='black', linewidth=1.5)
-    ax1.plot(df.index, df['SMA_14'], label='SMA (14)', color='blue', linestyle='--')
-    ax1.set_title("Fiyat ve Hareketli Ortalama")
-    ax1.set_ylabel("Fiyat")
-    ax1.legend(loc='best')
-    ax1.grid(True, alpha=0.3)
+    # Eksik sütunları tamamla (olası hataları önlemek için)
+    if 'Open' not in df_plot.columns: df_plot['Open'] = df_plot['Close']
+    if 'High' not in df_plot.columns: df_plot['High'] = df_plot['Close']
+    if 'Low' not in df_plot.columns:  df_plot['Low'] = df_plot['Close']
+    if 'Volume' not in df_plot.columns: df_plot['Volume'] = 0
+
+    # Eğer index datetime değilse çevirmeye çalış
+    if not isinstance(df_plot.index, pd.DatetimeIndex):
+        try:
+            df_plot.index = pd.to_datetime(df_plot.index)
+        except:
+            df_plot.index = pd.date_range(end=pd.Timestamp.today(), periods=len(df_plot))
+
+    apds = []
     
-    # 2. RSI (Göreceli Güç Endeksi)
-    ax2.plot(df.index, df['RSI_14'], label='RSI (14)', color='purple')
-    ax2.axhline(70, color='red', linestyle='--', alpha=0.5)  # Aşırı alım bölgesi
-    ax2.axhline(30, color='green', linestyle='--', alpha=0.5) # Aşırı satım bölgesi
-    ax2.set_title("RSI (Relative Strength Index)")
-    ax2.set_ylabel("RSI")
-    ax2.set_ylim(0, 100)
-    ax2.legend(loc='best')
-    ax2.grid(True, alpha=0.3)
+    # 1. Ana Grafik Üzerine SMA
+    if 'SMA_14' in df_plot.columns:
+        apds.append(mpf.make_addplot(df_plot['SMA_14'], color='blue', width=1.5))
+        
+    # Bollinger Bands
+    if 'BBH' in df_plot.columns and 'BBL' in df_plot.columns:
+        apds.append(mpf.make_addplot(df_plot['BBH'], color='gray', width=0.8, linestyle='--'))
+        apds.append(mpf.make_addplot(df_plot['BBL'], color='gray', width=0.8, linestyle='--'))
+
+    # 2. Alt Panel (Panel 1): MACD
+    if 'MACD' in df_plot.columns and 'Signal' in df_plot.columns and 'Histogram' in df_plot.columns:
+        colors = ['green' if val >= 0 else 'red' for val in df_plot['Histogram']]
+        apds.append(mpf.make_addplot(df_plot['MACD'], panel=1, color='blue', secondary_y=False))
+        apds.append(mpf.make_addplot(df_plot['Signal'], panel=1, color='orange', secondary_y=False))
+        apds.append(mpf.make_addplot(df_plot['Histogram'], type='bar', color=colors, panel=1, secondary_y=False))
+
+    # 3. Alt Panel (Panel 2): RSI
+    if 'RSI_14' in df_plot.columns:
+        apds.append(mpf.make_addplot(df_plot['RSI_14'], panel=2, color='purple', ylabel='RSI'))
+        
+    # Stil ve genel ayarlar (charles stili yeşil ve kırmızı mum grafikleri sunar)
+    # Ayrıca hlines ile RSI için 30 ve 70 seviyelerini çizdirelim.
+    kwargs = dict(
+        type='candle',
+        style='charles',
+        title=f"{symbol} Teknik Analizi",
+        ylabel='Fiyat',
+        volume=False,
+        addplot=apds,
+        panel_ratios=(3, 1, 1),
+        figratio=(12, 10),
+        figscale=1.2,
+        tight_layout=True
+    )
     
-    # 3. MACD
-    ax3.plot(df.index, df['MACD'], label='MACD Line', color='blue')
-    ax3.plot(df.index, df['Signal'], label='Signal Line', color='orange')
-    
-    # Histogram için renk belirleme: pozitifler yeşil, negatifler kırmızı
-    colors = ['green' if val >= 0 else 'red' for val in df['Histogram']]
-    ax3.bar(df.index, df['Histogram'], color=colors, alpha=0.5, label='Histogram')
-    
-    ax3.set_title("MACD (Moving Average Convergence Divergence)")
-    ax3.set_ylabel("MACD")
-    ax3.set_xlabel("Tarih")
-    ax3.legend(loc='best')
-    ax3.grid(True, alpha=0.3)
-    
-    # Grafiği düzenle ve sıkıştır
-    plt.tight_layout()
-    
-    # Ekranda göster veya dosyaya kaydet
+    # Dosyaya kaydet veya ekranda göster
     if output_path:
-        plt.savefig(output_path)
+        # RSI çizgileri manuel eklenemediğinden hlines parametresini kullanıyoruz
+        mpf.plot(df_plot, **kwargs, savefig=output_path)
         print(f"Grafik '{output_path}' konumuna kaydedildi.")
     else:
-        plt.show()
-        
-    plt.close()
+        mpf.plot(df_plot, **kwargs)
 
-# TEST KULLANIMI İÇİN ÖRNEK (Çalıştırıldığında)
 if __name__ == "__main__":
-    print("Bu modül, veri çekme modülü hazırlandığında dışarıdan çağrılmak üzere tasarlanmıştır.")
-    print("Örnek kullanım: plot_indicators(df_with_indicators, 'THYAO.IS', 'test_grafik.png')")
+    print("Test Kullanımı: plot_indicators(df, 'TEST', 'test_grafik.png')")

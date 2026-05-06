@@ -22,7 +22,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         pass
 
 from python_core.data_fetcher import fetch_recent_data, fetch_historical_data, get_stock_info
-from python_core.indicators import add_all_indicators
+from python_core.cpp_bridge import add_all_indicators_fast as add_all_indicators
 from python_core.charting import plot_indicators
 
 # Logger ayarları

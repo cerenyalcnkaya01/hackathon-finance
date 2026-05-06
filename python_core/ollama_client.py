@@ -1,72 +1,55 @@
 """
-Embedded AI İstemcisi (llama-cpp-python)
+Embedded AI İstemcisi (Transformers)
 
-Yerel GGUF modelini doğrudan yükleyerek çalışır. Ollama servisinin 
-arkada çalışmasına gerek duymaz.
+Yerel HuggingFace modellerini (örn. TinyLlama) doğrudan yükleyerek çalışır.
+Ollama veya llama.cpp'ye gerek duymaz. "kodla beraber" çalışır.
 """
 
 import os
 import logging
-from typing import Optional
-from llama_cpp import Llama
+from transformers import pipeline
 
 logger = logging.getLogger(__name__)
 
-# ── Model Ayarları ────────────────────────────────────────────────────────────
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(ROOT_DIR, "models", "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf")
-
 # Global model örneği (Lazy loading)
-_llm = None
+_ai_pipeline = None
 
 def get_llm():
-    global _llm
-    if _llm is None:
-        if not os.path.exists(MODEL_PATH):
-            logger.error(f"Model dosyası bulunamadı: {MODEL_PATH}")
-            return None
-        
-        logger.info(f"Model yükleniyor: {MODEL_PATH}...")
+    global _ai_pipeline
+    if _ai_pipeline is None:
+        logger.info("Local AI (Transformers) yükleniyor... Bu işlem ilk seferde biraz zaman alabilir (model indiriliyor).")
         try:
-            # GPU varsa kullanmaya çalış (n_gpu_layers=-1), yoksa CPU (0)
-            _llm = Llama(
-                model_path=MODEL_PATH,
-                n_ctx=2048,
-                n_threads=4,
-                n_gpu_layers=0, # Hackathon ortamında CPU daha güvenli
-                verbose=False
+            # Daha hızlı ve küçük bir model seçiyoruz. 
+            # İsteğe bağlı olarak "Qwen/Qwen1.5-0.5B-Chat" veya "TinyLlama/TinyLlama-1.1B-Chat-v1.0" kullanılabilir.
+            # sentiment-analysis de kullanılabilir ama metin üretimi istendiği için text-generation kullanıyoruz.
+            _ai_pipeline = pipeline(
+                "text-generation", 
+                model="Qwen/Qwen1.5-0.5B-Chat", 
+                device_map="auto" # GPU varsa kullan, yoksa CPU
             )
-            logger.info("Model başarıyla yüklendi.")
+            logger.info("Local AI başarıyla yüklendi.")
         except Exception as e:
-            logger.error(f"Model yükleme hatası: {e}")
+            logger.error(f"Local AI yükleme hatası: {e}")
             return None
-    return _llm
-
-# ── Yardımcı Fonksiyonlar ─────────────────────────────────────────────────────
+    return _ai_pipeline
 
 def check_ollama_status() -> dict:
-    """Ollama yerine artık yerel model durumunu kontrol eder."""
-    if os.path.exists(MODEL_PATH):
-        return {"online": True, "models": ["Llama-3.1-8B-Embedded"], "error": None}
-    return {"online": False, "models": [], "error": "Model dosyası bulunamadı."}
+    """Yapay zeka durumunu kontrol eder."""
+    try:
+        # Pipeline test
+        get_llm()
+        return {"online": True, "models": ["Qwen1.5-0.5B-Chat (Local)"], "error": None}
+    except Exception as e:
+        return {"online": False, "models": [], "error": str(e)}
 
 def list_available_models() -> list:
-    return ["Llama-3.1-8B-Embedded"] if os.path.exists(MODEL_PATH) else []
+    return ["Qwen1.5-0.5B-Chat (Local)"]
 
-# ── Ana Analiz Fonksiyonu ─────────────────────────────────────────────────────
-
-def generate_ai_analysis(analysis_result: dict, model: str = "embedded",
-                         language: str = "tr") -> dict:
+def generate_ai_analysis(analysis_result: dict, model: str = "embedded", language: str = "tr") -> dict:
     llm = get_llm()
     if not llm:
-        return {
-            "ai_commentary": None,
-            "success": False,
-            "error": "Model yüklenemedi veya dosya eksik."
-        }
+        return {"ai_commentary": None, "success": False, "error": "AI model yüklenemedi."}
     
-    # Prompt hazırlama (Llama 3 formatı)
     symbol = analysis_result.get("symbol", "?")
     last_price = analysis_result.get("last_price", "?")
     rsi = analysis_result.get("rsi", "?")
@@ -75,27 +58,29 @@ def generate_ai_analysis(analysis_result: dict, model: str = "embedded",
     info = analysis_result.get("info", {})
     sector = info.get("sector", "Bilinmiyor")
 
-    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n" \
-             f"Sen profesyonel bir finansal analistsin. Verilen teknik verileri Türkçe olarak yorumla. <|eot_id|>" \
-             f"<|start_header_id|>user<|end_header_id|>\n\n" \
-             f"Hisse: {symbol}, Sektör: {sector}, Fiyat: {last_price}, RSI: {rsi}, MACD: {macd}, Sinyal: {signal}. " \
-             f"Kısa bir değerlendirme ve Al/Tut/Sat tavsiyesi ver. <|eot_id|>" \
-             f"<|start_header_id|>assistant<|end_header_id|>\n\n"
+    prompt = (
+        f"Sen bir finansal analistsin. Aşağıdaki verileri kısaca yorumla ve Al/Sat/Tut tavsiyesi ver.\n"
+        f"Hisse: {symbol}\nFiyat: {last_price}\nRSI: {rsi}\nMACD: {macd}\nSinyal: {signal}\n"
+        f"Yorum (Türkçe):"
+    )
 
     try:
-        output = llm(prompt, max_tokens=256, stop=["<|eot_id|>"], echo=False)
-        text = output["choices"][0]["text"].strip()
+        # Prompt'u Qwen chat formatına uygun verebiliriz
+        messages = [
+            {"role": "system", "content": "Sen profesyonel bir finansal analistsin. Sadece Türkçe yanıt ver."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        output = llm(messages, max_new_tokens=150, do_sample=True, temperature=0.3)
+        text = output[0]["generated_text"][-1]["content"] if isinstance(output[0]["generated_text"], list) else output[0]["generated_text"]
+        
         return {
-            "ai_commentary": text,
+            "ai_commentary": str(text).strip(),
             "success": True,
             "error": None
         }
     except Exception as e:
-        return {
-            "ai_commentary": None,
-            "success": False,
-            "error": str(e)
-        }
+        return {"ai_commentary": None, "success": False, "error": str(e)}
 
 def generate_screening_summary(screening_results: list, model: str = "embedded") -> dict:
     llm = get_llm()
@@ -103,23 +88,24 @@ def generate_screening_summary(screening_results: list, model: str = "embedded")
         return {"ai_commentary": None, "success": False, "error": "Model hatası"}
     
     lines = []
-    for r in screening_results:
+    for r in screening_results[:10]: # En fazla 10 hisseyi gönder
         sym = r.get("symbol") or r.get("Sembol", "?")
         sig = r.get("signal") or r.get("Sinyal", "?")
         lines.append(f"{sym}: {sig}")
     
     summary_text = ", ".join(lines)
+    prompt = f"Şu hisselerin teknik sinyallerine göre piyasanın genel durumunu Türkçe olarak kısaca özetle: {summary_text}"
     
-    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n" \
-             f"Piyasa özetini Türkçe yorumla. <|eot_id|>" \
-             f"<|start_header_id|>user<|end_header_id|>\n\n" \
-             f"Şu hisseleri değerlendir: {summary_text} <|eot_id|>" \
-             f"<|start_header_id|>assistant<|end_header_id|>\n\n"
-
     try:
-        output = llm(prompt, max_tokens=200, stop=["<|eot_id|>"])
+        messages = [
+            {"role": "system", "content": "Sen bir piyasa analistisin. Verilen hisse sinyallerini özetle."},
+            {"role": "user", "content": prompt}
+        ]
+        output = llm(messages, max_new_tokens=150, do_sample=True, temperature=0.3)
+        text = output[0]["generated_text"][-1]["content"] if isinstance(output[0]["generated_text"], list) else output[0]["generated_text"]
+        
         return {
-            "ai_commentary": output["choices"][0]["text"].strip(),
+            "ai_commentary": str(text).strip(),
             "success": True,
             "error": None
         }

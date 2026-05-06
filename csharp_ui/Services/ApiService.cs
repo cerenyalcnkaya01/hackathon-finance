@@ -43,6 +43,7 @@ namespace csharp_ui.Services
         [JsonProperty("macd")]    public double Macd    { get; set; }
         [JsonProperty("signal")]  public string Signal  { get; set; } = "";
         [JsonProperty("change_pct")] public double ChangePct { get; set; }
+        [JsonProperty("score")]   public int Score { get; set; }
     }
 
     public class HealthStatus
@@ -82,11 +83,11 @@ namespace csharp_ui.Services
             catch { return null; }
         }
 
-        public async Task<List<ScreenResult>> GetScreenAsync(string preset = "bist30", string screenType = "summary", string period = "3mo")
+        public async Task<List<ScreenResult>> GetScreenAsync(string preset = "bist30", string screenType = "summary", string period = "3mo", List<string>? indicators = null)
         {
             try
             {
-                var payload = new { preset, screen_type = screenType, period };
+                var payload = new { preset, screen_type = screenType, period, indicators = indicators ?? new List<string>() };
                 var response = await _http.PostAsJsonAsync("/api/screen", payload);
                 var json = await response.Content.ReadAsStringAsync();
                 var obj = JObject.Parse(json);

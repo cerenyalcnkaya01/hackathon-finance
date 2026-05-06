@@ -1,86 +1,23 @@
-﻿import pandas as pd
+import pandas as pd
+import ta
 
 def calculate_sma(df: pd.DataFrame, window: int = 14, column: str = "Close") -> pd.Series:
-    """
-    Basit Hareketli Ortalama (SMA - Simple Moving Average) hesaplar.
-    
-    Args:
-        df (pd.DataFrame): Fiyat verilerini içeren DataFrame.
-        window (int): SMA hesaplanacak periyot (varsayılan: 14).
-        column (str): Hesaplanacak fiyat sütunu (varsayılan: "Close").
-        
-    Returns:
-        pd.Series: SMA değerleri.
-    """
-    return df[column].rolling(window=window).mean()
+    """SMA hesaplar (ta kütüphanesi ile)."""
+    return ta.trend.sma_indicator(df[column], window=window, fillna=True)
 
 def calculate_ema(df: pd.DataFrame, window: int = 14, column: str = "Close") -> pd.Series:
-    """
-    Üstel Hareketli Ortalama (EMA - Exponential Moving Average) hesaplar.
-    
-    Args:
-        df (pd.DataFrame): Fiyat verilerini içeren DataFrame.
-        window (int): EMA hesaplanacak periyot (varsayılan: 14).
-        column (str): Hesaplanacak fiyat sütunu (varsayılan: "Close").
-        
-    Returns:
-        pd.Series: EMA değerleri.
-    """
-    return df[column].ewm(span=window, adjust=False).mean()
+    """EMA hesaplar (ta kütüphanesi ile)."""
+    return ta.trend.ema_indicator(df[column], window=window, fillna=True)
 
 def calculate_rsi(df: pd.DataFrame, window: int = 14, column: str = "Close") -> pd.Series:
-    """
-    Göreceli Güç Endeksi (RSI - Relative Strength Index) hesaplar.
-    Wilder'ın Smoothing yöntemi kullanılmıştır.
-    
-    Args:
-        df (pd.DataFrame): Fiyat verilerini içeren DataFrame.
-        window (int): RSI hesaplanacak periyot (varsayılan: 14).
-        column (str): Hesaplanacak fiyat sütunu (varsayılan: "Close").
-        
-    Returns:
-        pd.Series: RSI değerleri (0-100 arası).
-    """
-    delta = df[column].diff()
-    
-    # Kazançları (Gains) ve Kayıpları (Losses) ayır
-    gain = delta.where(delta > 0, 0.0)
-    loss = -delta.where(delta < 0, 0.0)
-    
-    # Wilder'ın düzleştirme (smoothing) metoduna uygun EMA hesapla
-    avg_gain = gain.ewm(alpha=1/window, min_periods=window, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/window, min_periods=window, adjust=False).mean()
-    
-    # RS (Relative Strength) ve RSI hesapla
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    
-    # Sıfıra bölme hatalarını engelle
-    rsi = rsi.fillna(0)
-    rsi[avg_loss == 0] = 100.0 # Kayıp yoksa RSI 100'dür
-    
-    return rsi
+    """RSI hesaplar (ta kütüphanesi ile)."""
+    return ta.momentum.rsi(df[column], window=window, fillna=True)
 
 def calculate_macd(df: pd.DataFrame, short_window: int = 12, long_window: int = 26, signal_window: int = 9, column: str = "Close") -> pd.DataFrame:
-    """
-    Hareketli Ortalama Yakınsama Iraksama (MACD - Moving Average Convergence Divergence) hesaplar.
-    
-    Args:
-        df (pd.DataFrame): Fiyat verilerini içeren DataFrame.
-        short_window (int): Kısa periyotlu EMA (varsayılan: 12).
-        long_window (int): Uzun periyotlu EMA (varsayılan: 26).
-        signal_window (int): Sinyal çizgisi periyodu (varsayılan: 9).
-        column (str): Hesaplanacak fiyat sütunu (varsayılan: "Close").
-        
-    Returns:
-        pd.DataFrame: 'MACD', 'Signal' ve 'Histogram' sütunlarını içeren DataFrame.
-    """
-    short_ema = calculate_ema(df, window=short_window, column=column)
-    long_ema = calculate_ema(df, window=long_window, column=column)
-    
-    macd_line = short_ema - long_ema
-    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
-    macd_histogram = macd_line - signal_line
+    """MACD hesaplar (ta kütüphanesi ile)."""
+    macd_line = ta.trend.macd(df[column], window_slow=long_window, window_fast=short_window, fillna=True)
+    signal_line = ta.trend.macd_signal(df[column], window_slow=long_window, window_fast=short_window, window_sign=signal_window, fillna=True)
+    macd_histogram = ta.trend.macd_diff(df[column], window_slow=long_window, window_fast=short_window, window_sign=signal_window, fillna=True)
     
     return pd.DataFrame({
         'MACD': macd_line,
@@ -88,16 +25,22 @@ def calculate_macd(df: pd.DataFrame, short_window: int = 12, long_window: int = 
         'Histogram': macd_histogram
     })
 
+def calculate_bbands(df: pd.DataFrame, window: int = 20, window_dev: int = 2, column: str = "Close") -> pd.DataFrame:
+    """Bollinger Bands hesaplar (ta kütüphanesi ile)."""
+    bb = ta.volatility.BollingerBands(close=df[column], window=window, window_dev=window_dev, fillna=True)
+    return pd.DataFrame({
+        'BBL': bb.bollinger_lband(),
+        'BBM': bb.bollinger_mavg(),
+        'BBH': bb.bollinger_hband()
+    })
+
+def calculate_atr(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """ATR hesaplar (ta kütüphanesi ile)."""
+    return ta.volatility.average_true_range(df["High"], df["Low"], df["Close"], window=window, fillna=True)
+
 def add_all_indicators(df: pd.DataFrame, column: str = "Close") -> pd.DataFrame:
     """
-    Tüm indikatörleri (RSI, MACD, SMA, EMA) DataFrame'e ekler ve döndürür.
-    
-    Args:
-        df (pd.DataFrame): İşlenecek DataFrame.
-        column (str): Baz alınacak sütun.
-        
-    Returns:
-        pd.DataFrame: İndikatör sütunları eklenmiş orijinal DataFrame.
+    Tüm indikatörleri (RSI, MACD, SMA, EMA, BB, ATR) DataFrame'e ekler ve döndürür.
     """
     df = df.copy()
     
@@ -112,4 +55,14 @@ def add_all_indicators(df: pd.DataFrame, column: str = "Close") -> pd.DataFrame:
     macd_df = calculate_macd(df, column=column)
     df = pd.concat([df, macd_df], axis=1)
     
+    # Bollinger Bands
+    bb_df = calculate_bbands(df, column=column)
+    df = pd.concat([df, bb_df], axis=1)
+    
+    # ATR
+    if all(c in df.columns for c in ["High", "Low", "Close"]):
+        df['ATR_14'] = calculate_atr(df, window=14)
+    else:
+        df['ATR_14'] = 0.0
+        
     return df
