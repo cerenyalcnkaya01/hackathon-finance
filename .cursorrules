@@ -1,0 +1,20 @@
+# SolveX AI Hackathon 2026 - Plan Agent Yönergeleri
+
+Bu proje, "Plan Agent" rolündeki AI tarafından mimari ve görev dağılımı yapılarak başlatılmıştır. Tüm AI ajanları bu kurallara uymak zorundadır.
+
+## AI İzlenebilirliği (AI Traceability)
+- Dosyaların başında AI tarafından yazıldığını veya optimize edildiğini belirten yorum satırları kullanılmalıdır.
+- Pull Request açıklamalarında AI ajanının rolü (Plan Agent / Skills Agent) ve yaptığı değişiklikler detaylandırılmalıdır.
+- Karmaşık algoritmalar ve performans optimizasyonlarında "Skills Agent" rolüne bürünerek kod yazılacaktır.
+
+## Kod Standartları
+- Commit mesajları GitHub Flow'a uygun şimdiki zaman kipiyle ve İngilizce olmalıdır (Örn: `feat: add user authentication layer`, `fix: resolve database deadlock`).
+- Branch isimlendirmeleri: `feature/gorev-adi`, `fix/hata-adi`.
+- Proje tamamen modüler olmalı, Dockerization göz önünde bulundurularak geliştirilmelidir.
+
+## Teknoloji Yığını (Tech Stack)
+- **Backend / Core Engine:** Python (Veri çekme, Ollama entegrasyonu, iş mantığı)
+- **High-Performance Worker:** C++ (İsteğe bağlı, ağır hesaplama ve tarama optimizasyonları için)
+- **UI / Frontend:** C# (Masaüstü uygulaması) veya Python tabanlı UI.
+- **AI / LLM:** Ollama (Local AI Modelleri)
+- **DevOps:** Docker & Docker Compose
