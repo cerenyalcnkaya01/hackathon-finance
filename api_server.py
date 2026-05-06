@@ -30,11 +30,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 class AnalyzeRequest(BaseModel):
     symbol: str; period: str = "3mo"; interval: str = "1d"
-    save_chart: bool = True; ai_analysis: bool = False; ai_model: str = "llama3"
+    save_chart: bool = True; ai_analysis: bool = False; ai_model: str = "llama3.1"
 
 class MultiAnalyzeRequest(BaseModel):
     symbols: List[str]; period: str = "3mo"
-    save_chart: bool = False; ai_summary: bool = False; ai_model: str = "llama3"
+    save_chart: bool = False; ai_summary: bool = False; ai_model: str = "llama3.1"
 
 class ScreenRequest(BaseModel):
     symbols: List[str] = []; preset: str = "bist30"; period: str = "3mo"
@@ -100,7 +100,7 @@ def ai_models():
     return {"models": list_available_models()}
 
 @app.post("/api/ai/analyze/{symbol}", tags=["AI"])
-def ai_analyze(symbol: str, period: str = "3mo", model: str = "llama3"):
+def ai_analyze(symbol: str, period: str = "3mo", model: str = "llama3.1"):
     result = analyze_stock(symbol, period, save_chart=False, save_json=False)
     if "error" in result: raise HTTPException(404, result["error"])
     result["ai"] = generate_ai_analysis(result, model)

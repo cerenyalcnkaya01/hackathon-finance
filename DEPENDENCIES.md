@@ -50,7 +50,7 @@ Sistem tamamen lokalde çalışacak şekilde tasarlandığı için aşağıdaki 
 
 ### B. Dil Modeli (LLM) İndirme İşlemi
 Analiz ve akıl yürütme (Reasoning) yeteneği yüksek, finansal mantığa yatkın bir model indirilmelidir. Terminalden şu komut çalıştırılarak model otomatik indirilebilir:
-- `ollama pull llama3` (Genel kullanım için 8B model)
+- `ollama pull llama3.1` (Genel kullanım için 8B model)
 - *veya* `ollama pull mistral` 
 
 ### C. GGUF Modelleri (Manuel Yükleme)

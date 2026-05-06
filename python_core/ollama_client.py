@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # ── Varsayılan Ayarlar ────────────────────────────────────────────────────────
 
 OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "llama3"
+DEFAULT_MODEL = "llama3.1"
 
 
 # ── Yardımcı Fonksiyonlar ─────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ def generate_ai_analysis(analysis_result: dict, model: str = DEFAULT_MODEL,
     
     Args:
         analysis_result (dict): pipeline.analyze_stock() çıktısı.
-        model (str): Kullanılacak Ollama modeli (varsayılan: 'llama3').
+        model (str): Kullanılacak Ollama modeli (varsayılan: 'llama3.1').
         language (str): Yanıt dili ('tr' veya 'en').
         
     Returns:
