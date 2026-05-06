@@ -89,6 +89,18 @@ def screen(req: ScreenRequest):
     if not syms: raise HTTPException(400, "Sembol listesi gerekli.")
     fn = {"rsi_oversold": lambda: screen_by_rsi(syms, req.period, signal="oversold"), "rsi_overbought": lambda: screen_by_rsi(syms, req.period, signal="overbought"), "macd_crossover": lambda: screen_by_macd_crossover(syms, req.period)}.get(req.screen_type, lambda: screen_summary(syms, req.period))
     df = fn()
+    if not df.empty:
+        # Rename columns to match C# models (lowercase)
+        rename_map = {
+            "Sembol": "symbol",
+            "Sektör": "sector",
+            "Son Fiyat": "close",
+            "RSI": "rsi",
+            "RSI_14": "rsi",
+            "MACD": "macd",
+            "Sinyal": "signal"
+        }
+        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
     return {"results": df.to_dict("records") if not df.empty else [], "count": len(df), "type": req.screen_type}
 
 @app.get("/api/ai/status", tags=["AI"])
@@ -99,12 +111,15 @@ def ai_status():
 def ai_models():
     return {"models": list_available_models()}
 
-@app.post("/api/ai/analyze/{symbol}", tags=["AI"])
+@app.get("/api/ai/analyze/{symbol}", tags=["AI"])
 def ai_analyze(symbol: str, period: str = "3mo", model: str = "llama3.1"):
     result = analyze_stock(symbol, period, save_chart=False, save_json=False)
     if "error" in result: raise HTTPException(404, result["error"])
-    result["ai"] = generate_ai_analysis(result, model)
-    return result
+    ai_resp = generate_ai_analysis(result, model)
+    if ai_resp["success"]:
+        return {"symbol": symbol, "ai": ai_resp["ai_commentary"]}
+    else:
+        return {"symbol": symbol, "ai": f"AI Hatası: {ai_resp['error']}"}
 
 @app.get("/api/engine", tags=["System"])
 def engine():

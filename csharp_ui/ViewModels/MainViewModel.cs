@@ -19,6 +19,7 @@ namespace csharp_ui.ViewModels
         public string Symbol  { get; set; } = "";
         public double Close   { get; set; }
         public double Rsi     { get; set; }
+        public string Sector  { get; set; } = "";
         public string Signal  { get; set; } = "";
         public double ChangePct { get; set; }
         public string ChangePctStr => ChangePct >= 0 ? $"+{ChangePct:F2}%" : $"{ChangePct:F2}%";
@@ -243,6 +244,7 @@ namespace csharp_ui.ViewModels
             {
                 Name      = r.Symbol,
                 Symbol    = r.Symbol,
+                Sector    = r.Sector,
                 Close     = r.Close,
                 Rsi       = r.Rsi,
                 Signal    = r.Signal,

@@ -8,7 +8,7 @@
     <conv:BoolToVisibilityConverter x:Key="BoolToVisConv"/>
 
     <!-- ══════════════════════════════════════════
-         CRYPTIX COLOR PALETTE
+         MAIN COLOR PALETTE
     ══════════════════════════════════════════ -->
     <Color x:Key="BgDeepColor">#0A0D0F</Color>
     <Color x:Key="BgCardColor">#111518</Color>
@@ -286,9 +286,37 @@
     <!-- ══════════════════════════════════════════
          SCROLLBAR
     ══════════════════════════════════════════ -->
-    <Style x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
-        <Setter Property="Width" Value="4"/>
-        <Setter Property="Background" Value="Transparent"/>
+    <Style x:Key="ScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="#333333" CornerRadius="3" Margin="2" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="#0A0D0F"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="true">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollThumb}"/>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ══════════════════════════════════════════

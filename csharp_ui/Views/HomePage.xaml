@@ -1,0 +1,81 @@
+<Page x:Class="csharp_ui.Views.HomePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="HomePage">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <Button Grid.Column="0" Style="{StaticResource GhostButton}" Content="← Profiller" Click="Back_Click" Margin="0,0,16,0" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="ProfileNameText" Text="Profil Adı" Style="{StaticResource HeadingXL}"/>
+                <TextBlock x:Name="IndicatorsText" Text="Seçili İndikatörler..." Style="{StaticResource BodySM}"/>
+            </StackPanel>
+            <Button Grid.Column="2" Style="{StaticResource NeonButton}" Content="🔄 Yenile" Click="Refresh_Click" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Stock List -->
+        <ScrollViewer x:Name="ListScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="StocksList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CryptoCard}" Margin="0,0,0,12" Cursor="Hand" MouseLeftButtonUp="Stock_Click" Background="{StaticResource BgCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Symbol}" Style="{StaticResource HeadingLG}"/>
+                                    <TextBlock Text="{Binding Sector}" Style="{StaticResource BodySM}"/>
+                                </StackPanel>
+
+                                <!-- Price Boxes -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,24,0">
+                                    <Border Background="#0A1015" CornerRadius="8" Padding="12,8" Margin="0,0,12,0" BorderBrush="#1E2530" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="ANLIK FİYAT" Style="{StaticResource BodySM}" FontSize="10"/>
+                                            <TextBlock Text="{Binding Close, StringFormat={}{0:N2}}" Style="{StaticResource HeadingMD}" Foreground="{StaticResource NeonGreen}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="#0A1015" CornerRadius="8" Padding="12,8" Margin="0,0,12,0" BorderBrush="#1E2530" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="EN YÜKSEK" Style="{StaticResource BodySM}" FontSize="10"/>
+                                            <TextBlock Text="{Binding High, StringFormat={}{0:N2}}" Style="{StaticResource HeadingMD}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="#0A1015" CornerRadius="8" Padding="12,8" BorderBrush="#1E2530" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="EN DÜŞÜK" Style="{StaticResource BodySM}" FontSize="10"/>
+                                            <TextBlock Text="{Binding Low, StringFormat={}{0:N2}}" Style="{StaticResource HeadingMD}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                                
+                                <TextBlock Grid.Column="2" Text="➔" FontSize="20" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Loading / Status (Placed after for overlay) -->
+        <StackPanel x:Name="StatusPanel" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+            <TextBlock x:Name="StatusText" Text="Veriler yükleniyor..." Style="{StaticResource HeadingMD}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+            <TextBlock x:Name="StatusSubText" Text="Hisseler analiz ediliyor..." Style="{StaticResource BodySM}" HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Page>

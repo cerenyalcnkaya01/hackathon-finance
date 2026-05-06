@@ -1,275 +1,127 @@
 """
-Ollama AI İstemcisi (Ollama Client)
+Embedded AI İstemcisi (llama-cpp-python)
 
-Yerel olarak çalışan Ollama LLM servisine bağlanarak finansal analiz
-yorumları ve AI içgörüleri üretir. Bu modül, pipeline sonuçlarını
-alıp Ollama'ya gönderir ve doğal dilde analiz raporu döndürür.
+Yerel GGUF modelini doğrudan yükleyerek çalışır. Ollama servisinin 
+arkada çalışmasına gerek duymaz.
 """
 
-import requests
-import json
+import os
 import logging
 from typing import Optional
+from llama_cpp import Llama
 
 logger = logging.getLogger(__name__)
 
-# ── Varsayılan Ayarlar ────────────────────────────────────────────────────────
+# ── Model Ayarları ────────────────────────────────────────────────────────────
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "llama3.1"
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf")
 
+# Global model örneği (Lazy loading)
+_llm = None
+
+def get_llm():
+    global _llm
+    if _llm is None:
+        if not os.path.exists(MODEL_PATH):
+            logger.error(f"Model dosyası bulunamadı: {MODEL_PATH}")
+            return None
+        
+        logger.info(f"Model yükleniyor: {MODEL_PATH}...")
+        try:
+            # GPU varsa kullanmaya çalış (n_gpu_layers=-1), yoksa CPU (0)
+            _llm = Llama(
+                model_path=MODEL_PATH,
+                n_ctx=2048,
+                n_threads=4,
+                n_gpu_layers=0, # Hackathon ortamında CPU daha güvenli
+                verbose=False
+            )
+            logger.info("Model başarıyla yüklendi.")
+        except Exception as e:
+            logger.error(f"Model yükleme hatası: {e}")
+            return None
+    return _llm
 
 # ── Yardımcı Fonksiyonlar ─────────────────────────────────────────────────────
 
 def check_ollama_status() -> dict:
-    """
-    Ollama servisinin çalışıp çalışmadığını kontrol eder.
-    
-    Returns:
-        dict: {"online": bool, "models": list[str], "error": str|None}
-    """
-    try:
-        resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            model_names = [m["name"] for m in data.get("models", [])]
-            return {"online": True, "models": model_names, "error": None}
-        return {"online": False, "models": [], "error": f"HTTP {resp.status_code}"}
-    except requests.ConnectionError:
-        return {"online": False, "models": [], "error": "Ollama servisi çalışmıyor. 'ollama serve' ile başlatın."}
-    except Exception as e:
-        return {"online": False, "models": [], "error": str(e)}
-
+    """Ollama yerine artık yerel model durumunu kontrol eder."""
+    if os.path.exists(MODEL_PATH):
+        return {"online": True, "models": ["Llama-3.1-8B-Embedded"], "error": None}
+    return {"online": False, "models": [], "error": "Model dosyası bulunamadı."}
 
 def list_available_models() -> list:
-    """Ollama'da yüklü modelleri listeler."""
-    status = check_ollama_status()
-    return status.get("models", [])
-
+    return ["Llama-3.1-8B-Embedded"] if os.path.exists(MODEL_PATH) else []
 
 # ── Ana Analiz Fonksiyonu ─────────────────────────────────────────────────────
 
-def generate_ai_analysis(analysis_result: dict, model: str = DEFAULT_MODEL,
+def generate_ai_analysis(analysis_result: dict, model: str = "embedded",
                          language: str = "tr") -> dict:
-    """
-    Pipeline'dan gelen analiz sonuçlarını Ollama LLM'e göndererek
-    doğal dilde finansal yorum ve tavsiye üretir.
-    
-    Args:
-        analysis_result (dict): pipeline.analyze_stock() çıktısı.
-        model (str): Kullanılacak Ollama modeli (varsayılan: 'llama3.1').
-        language (str): Yanıt dili ('tr' veya 'en').
-        
-    Returns:
-        dict: {
-            "ai_commentary": str,  -- AI'nın doğal dilde yorumu
-            "model_used": str,     -- Kullanılan model adı
-            "success": bool,       -- Başarılı mı?
-            "error": str|None      -- Hata varsa açıklama
-        }
-    """
-    # Ollama çevrimiçi mi kontrol et
-    status = check_ollama_status()
-    if not status["online"]:
+    llm = get_llm()
+    if not llm:
         return {
             "ai_commentary": None,
-            "model_used": model,
             "success": False,
-            "error": status["error"]
+            "error": "Model yüklenemedi veya dosya eksik."
         }
     
-    # Prompt oluşturma
-    symbol = analysis_result.get("symbol", "Bilinmiyor")
-    last_price = analysis_result.get("last_price", "N/A")
-    rsi = analysis_result.get("rsi", "N/A")
-    macd = analysis_result.get("macd", "N/A")
-    macd_signal = analysis_result.get("macd_signal", "N/A")
-    signal = analysis_result.get("signal", "N/A")
-    sma = analysis_result.get("sma_14", "N/A")
-    ema = analysis_result.get("ema_14", "N/A")
+    # Prompt hazırlama (Llama 3 formatı)
+    symbol = analysis_result.get("symbol", "?")
+    last_price = analysis_result.get("last_price", "?")
+    rsi = analysis_result.get("rsi", "?")
+    macd = analysis_result.get("macd", "?")
+    signal = analysis_result.get("signal", "?")
     info = analysis_result.get("info", {})
     sector = info.get("sector", "Bilinmiyor")
-    market_cap = info.get("marketCap", "N/A")
 
-    if language == "tr":
-        system_prompt = (
-            "Sen deneyimli bir finansal analist ve borsa uzmanısın. "
-            "Sana verilen teknik analiz verilerini inceleyerek kısa, net ve "
-            "profesyonel bir yatırım değerlendirmesi yap. "
-            "Yanıtını Türkçe olarak ver. Maksimum 200 kelime kullan."
-        )
-        user_prompt = f"""Aşağıdaki teknik analiz verilerini değerlendir:
+    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n" \
+             f"Sen profesyonel bir finansal analistsin. Verilen teknik verileri Türkçe olarak yorumla. <|eot_id|>" \
+             f"<|start_header_id|>user<|end_header_id|>\n\n" \
+             f"Hisse: {symbol}, Sektör: {sector}, Fiyat: {last_price}, RSI: {rsi}, MACD: {macd}, Sinyal: {signal}. " \
+             f"Kısa bir değerlendirme ve Al/Tut/Sat tavsiyesi ver. <|eot_id|>" \
+             f"<|start_header_id|>assistant<|end_header_id|>\n\n"
 
-Hisse: {symbol}
-Sektör: {sector}
-Piyasa Değeri: {market_cap}
-Son Kapanış Fiyatı: {last_price}
-SMA (14 gün): {sma}
-EMA (14 gün): {ema}
-RSI (14): {rsi}
-MACD: {macd}
-MACD Sinyal: {macd_signal}
-Genel Sinyal: {signal}
-
-Lütfen:
-1. Mevcut teknik durumu özetle
-2. Kısa vadeli (1-2 hafta) ve orta vadeli (1-3 ay) görüşünü belirt
-3. Risk faktörlerini sırala
-4. Net bir tavsiye ver (Al / Tut / Sat)
-"""
-    else:
-        system_prompt = (
-            "You are an experienced financial analyst. Analyze the given technical "
-            "data and provide a concise, professional investment assessment. "
-            "Maximum 200 words."
-        )
-        user_prompt = f"""Analyze the following technical data:
-
-Stock: {symbol}
-Sector: {sector}
-Market Cap: {market_cap}
-Last Close: {last_price}
-SMA (14): {sma}
-EMA (14): {ema}
-RSI (14): {rsi}
-MACD: {macd}
-MACD Signal: {macd_signal}
-Overall Signal: {signal}
-
-Please:
-1. Summarize the current technical situation
-2. Short-term (1-2 weeks) and medium-term (1-3 months) outlook
-3. Risk factors
-4. Clear recommendation (Buy / Hold / Sell)
-"""
-    
-    # Ollama API çağrısı
     try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/chat",
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                "stream": False,
-                "options": {
-                    "temperature": 0.4,
-                    "top_p": 0.9,
-                    "num_predict": 512,
-                }
-            },
-            timeout=120
-        )
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            ai_message = data.get("message", {}).get("content", "")
-            return {
-                "ai_commentary": ai_message.strip(),
-                "model_used": model,
-                "success": True,
-                "error": None
-            }
-        else:
-            return {
-                "ai_commentary": None,
-                "model_used": model,
-                "success": False,
-                "error": f"Ollama API hatası: HTTP {resp.status_code} — {resp.text[:200]}"
-            }
-    except requests.Timeout:
+        output = llm(prompt, max_tokens=256, stop=["<|eot_id|>"], echo=False)
+        text = output["choices"][0]["text"].strip()
         return {
-            "ai_commentary": None,
-            "model_used": model,
-            "success": False,
-            "error": "Ollama yanıt zaman aşımına uğradı (120s). Model çok büyük olabilir."
+            "ai_commentary": text,
+            "success": True,
+            "error": None
         }
     except Exception as e:
         return {
             "ai_commentary": None,
-            "model_used": model,
-            "success": False,
-            "error": f"Beklenmeyen hata: {str(e)}"
-        }
-
-
-def generate_screening_summary(screening_results: list, model: str = DEFAULT_MODEL) -> dict:
-    """
-    Toplu tarama sonuçlarını AI'a gönderip genel bir piyasa değerlendirmesi alır.
-    
-    Args:
-        screening_results (list): screen_summary() veya analyze_multiple() çıktıları.
-        model (str): Kullanılacak Ollama modeli.
-        
-    Returns:
-        dict: AI yorumunu içeren sonuç sözlüğü.
-    """
-    status = check_ollama_status()
-    if not status["online"]:
-        return {
-            "ai_commentary": None,
-            "model_used": model,
-            "success": False,
-            "error": status["error"]
-        }
-    
-    # Tarama sonuçlarını tablo formatında hazırla
-    lines = []
-    for r in screening_results:
-        if isinstance(r, dict):
-            sym = r.get("symbol") or r.get("Sembol", "?")
-            price = r.get("last_price") or r.get("Son Fiyat", "?")
-            rsi = r.get("rsi") or r.get("RSI_14", "?")
-            sig = r.get("signal") or r.get("Sinyal", "?")
-            lines.append(f"  {sym}: Fiyat={price}, RSI={rsi}, Sinyal={sig}")
-    
-    summary_text = "\n".join(lines) if lines else "Veri yok"
-    
-    prompt = f"""Aşağıda birden fazla hisse senedinin teknik analiz özeti var.
-Bu verilere bakarak genel bir piyasa değerlendirmesi yap (Türkçe, max 150 kelime):
-
-{summary_text}
-
-1. Piyasa genel trendi nedir?
-2. En dikkat çekici fırsatlar hangileri?
-3. Risk uyarıları nelerdir?
-"""
-    
-    try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/chat",
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "Sen profesyonel bir finansal analistsin. Türkçe yanıt ver."},
-                    {"role": "user", "content": prompt}
-                ],
-                "stream": False,
-                "options": {"temperature": 0.4, "num_predict": 400}
-            },
-            timeout=120
-        )
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            return {
-                "ai_commentary": data.get("message", {}).get("content", "").strip(),
-                "model_used": model,
-                "success": True,
-                "error": None
-            }
-        return {
-            "ai_commentary": None,
-            "model_used": model,
-            "success": False,
-            "error": f"HTTP {resp.status_code}"
-        }
-    except Exception as e:
-        return {
-            "ai_commentary": None,
-            "model_used": model,
             "success": False,
             "error": str(e)
         }
+
+def generate_screening_summary(screening_results: list, model: str = "embedded") -> dict:
+    llm = get_llm()
+    if not llm:
+        return {"ai_commentary": None, "success": False, "error": "Model hatası"}
+    
+    lines = []
+    for r in screening_results:
+        sym = r.get("symbol") or r.get("Sembol", "?")
+        sig = r.get("signal") or r.get("Sinyal", "?")
+        lines.append(f"{sym}: {sig}")
+    
+    summary_text = ", ".join(lines)
+    
+    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n" \
+             f"Piyasa özetini Türkçe yorumla. <|eot_id|>" \
+             f"<|start_header_id|>user<|end_header_id|>\n\n" \
+             f"Şu hisseleri değerlendir: {summary_text} <|eot_id|>" \
+             f"<|start_header_id|>assistant<|end_header_id|>\n\n"
+
+    try:
+        output = llm(prompt, max_tokens=200, stop=["<|eot_id|>"])
+        return {
+            "ai_commentary": output["choices"][0]["text"].strip(),
+            "success": True,
+            "error": None
+        }
+    except Exception as e:
+        return {"ai_commentary": None, "success": False, "error": str(e)}

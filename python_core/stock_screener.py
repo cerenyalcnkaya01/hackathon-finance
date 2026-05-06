@@ -183,9 +183,14 @@ def screen_summary(symbols: List[str], period: str = "3mo") -> pd.DataFrame:
                     sinyal = "🟢 Alım"
                 elif rsi_val >= 70:
                     sinyal = "🔴 Satış"
-            
+
+            # Sektör bilgisini getir (Cache'den gelecek)
+            info = get_stock_info(symbol)
+            sector = info.get("sector", "Bilinmiyor")
+
             results.append({
                 "Sembol": symbol,
+                "Sektör": sector,
                 "Son Fiyat": round(last["Close"], 2),
                 "RSI_14": round(rsi_val, 2) if rsi_val and not pd.isna(rsi_val) else None,
                 "MACD": round(macd_val, 4) if macd_val and not pd.isna(macd_val) else None,

@@ -7,6 +7,10 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Basit RAM Cache
+_data_cache = {}
+_info_cache = {}
+
 def fetch_historical_data(ticker_symbol: str, start_date: str, end_date: str, interval: str = "1d") -> pd.DataFrame:
     """
     Belirtilen tarih aralığında geçmiş borsa verilerini çeker.
@@ -37,16 +41,13 @@ def fetch_historical_data(ticker_symbol: str, start_date: str, end_date: str, in
 
 def fetch_recent_data(ticker_symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
     """
-    Son belirli bir periyoda ait borsa verilerini çeker.
-    
-    Args:
-        ticker_symbol (str): Hisse senedi sembolü (örn. 'AAPL', 'THYAO.IS').
-        period (str): Zaman periyodu ('1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max').
-        interval (str): Veri aralığı (örn. '1d', '1h', '15m').
-        
-    Returns:
-        pd.DataFrame: Borsa verilerini içeren DataFrame. Hata durumunda boş DataFrame döner.
+    Son belirli bir periyoda ait borsa verilerini çeker. RAM cache kullanır.
     """
+    cache_key = (ticker_symbol, period, interval)
+    if cache_key in _data_cache:
+        logger.info(f"{ticker_symbol} verisi cache'den getirildi.")
+        return _data_cache[cache_key]
+
     logger.info(f"{ticker_symbol} için son {period} verisi çekiliyor (Aralık: {interval})...")
     try:
         ticker = yf.Ticker(ticker_symbol)
@@ -57,6 +58,7 @@ def fetch_recent_data(ticker_symbol: str, period: str = "1mo", interval: str = "
             return pd.DataFrame()
             
         logger.info(f"{ticker_symbol} verisi başarıyla çekildi. Toplam satır: {len(df)}")
+        _data_cache[cache_key] = df
         return df
     except Exception as e:
         logger.error(f"{ticker_symbol} verisi çekilirken hata oluştu: {str(e)}")
@@ -64,18 +66,15 @@ def fetch_recent_data(ticker_symbol: str, period: str = "1mo", interval: str = "
 
 def get_stock_info(ticker_symbol: str) -> dict:
     """
-    Hisse senedi hakkında genel bilgileri çeker.
-    
-    Args:
-        ticker_symbol (str): Hisse senedi sembolü (örn. 'AAPL', 'THYAO.IS').
-        
-    Returns:
-        dict: Hisse bilgilerini içeren sözlük.
+    Hisse senedi hakkında genel bilgileri çeker. RAM cache kullanır.
     """
+    if ticker_symbol in _info_cache:
+        return _info_cache[ticker_symbol]
+
     try:
         ticker = yf.Ticker(ticker_symbol)
         info = ticker.info
-        return {
+        result = {
             "symbol": info.get("symbol"),
             "shortName": info.get("shortName"),
             "sector": info.get("sector"),
@@ -88,6 +87,8 @@ def get_stock_info(ticker_symbol: str) -> dict:
             "volume": info.get("volume"),
             "currency": info.get("currency")
         }
+        _info_cache[ticker_symbol] = result
+        return result
     except Exception as e:
         logger.error(f"{ticker_symbol} bilgileri çekilirken hata oluştu: {str(e)}")
         return {}

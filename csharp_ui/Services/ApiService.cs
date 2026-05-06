@@ -37,6 +37,7 @@ namespace csharp_ui.Services
     public class ScreenResult
     {
         [JsonProperty("symbol")]  public string Symbol  { get; set; } = "";
+        [JsonProperty("sector")]  public string Sector  { get; set; } = "";
         [JsonProperty("close")]   public double Close   { get; set; }
         [JsonProperty("rsi")]     public double Rsi     { get; set; }
         [JsonProperty("macd")]    public double Macd    { get; set; }
