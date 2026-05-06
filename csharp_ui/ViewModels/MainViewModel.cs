@@ -21,6 +21,8 @@ namespace csharp_ui.ViewModels
         public double Rsi     { get; set; }
         public string Sector  { get; set; } = "";
         public string Signal  { get; set; } = "";
+        public string SignalColor => Signal.Contains("Satış") || Signal.Contains("Sat") ? "#FF4560" : 
+                                     Signal.Contains("Alış") || Signal.Contains("Al") ? "#00E396" : "#EAEAEA";
         public double ChangePct { get; set; }
         public string ChangePctStr => ChangePct >= 0 ? $"+{ChangePct:F2}%" : $"{ChangePct:F2}%";
         public string ChangeColor  => ChangePct >= 0 ? "#00E396" : "#FF4560";
@@ -108,6 +110,7 @@ namespace csharp_ui.ViewModels
 
         // ── Assets Table ────────────────────────────────────────
         public ObservableCollection<AssetRow> Assets { get; } = new();
+        private string _sectorCachePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sector_cache.json");
 
         // ── Search / Input ──────────────────────────────────────
         private string _symbolInput = "THYAO.IS";
@@ -137,8 +140,11 @@ namespace csharp_ui.ViewModels
             await CheckHealthAsync();
             if (IsConnected)
             {
+                // Sektör taramasını tamamen arka planda başlat (fire-and-forget), ana yüklemeyi beklemesin
+                _ = LoadScreenAsync();
+                
+                // Sadece ana hisse verilerini bekle
                 await LoadStockAsync();
-                await LoadScreenAsync();
             }
             IsLoading = false;
         }
@@ -236,10 +242,35 @@ namespace csharp_ui.ViewModels
 
         private async Task LoadScreenAsync()
         {
-            IsLoading = true;
-            var rows = await _api.GetScreenAsync(SelectedPreset);
-            TotalAssets = rows.Count;
+            // Önce cache'ten anında yükle
+            try
+            {
+                if (System.IO.File.Exists(_sectorCachePath))
+                {
+                    var json = await System.IO.File.ReadAllTextAsync(_sectorCachePath);
+                    var cached = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<ScreenResult>>(json);
+                    if (cached != null) MapAndShowAssets(cached);
+                }
+            }
+            catch { }
 
+            // Arka planda güncelle (IsLoading'i bozmaz, ana spinner'ı tetiklemez)
+            try 
+            {
+                var rows = await _api.GetScreenAsync(SelectedPreset);
+                if (rows.Count > 0)
+                {
+                    MapAndShowAssets(rows);
+                    var json = System.Text.Json.JsonSerializer.Serialize(rows);
+                    await System.IO.File.WriteAllTextAsync(_sectorCachePath, json);
+                }
+            }
+            catch { }
+        }
+
+        private void MapAndShowAssets(System.Collections.Generic.List<ScreenResult> rows)
+        {
+            TotalAssets = rows.Count;
             var mapped = rows.Select(r => new AssetRow
             {
                 Name      = r.Symbol,
@@ -249,15 +280,13 @@ namespace csharp_ui.ViewModels
                 Rsi       = r.Rsi,
                 Signal    = r.Signal,
                 ChangePct = r.ChangePct
-            }).Take(20).ToList();
+            }).ToList();
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Assets.Clear();
                 foreach (var row in mapped) Assets.Add(row);
             });
-
-            IsLoading = false;
         }
 
         private async Task LoadAiAnalysisAsync()

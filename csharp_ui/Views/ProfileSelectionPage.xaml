@@ -2,6 +2,16 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Title="ProfileSelectionPage">
+    <Page.RenderTransform>
+        <TranslateTransform Y="0"/>
+    </Page.RenderTransform>
+
+    <Page.Triggers>
+        <EventTrigger RoutedEvent="Page.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource FadeInAnimation}"/>
+        </EventTrigger>
+    </Page.Triggers>
+
     <Grid Margin="40">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="Profil Seçimi" Style="{StaticResource HeadingXL}" HorizontalAlignment="Center" Margin="0,0,0,40"/>
@@ -9,7 +19,7 @@
             <ItemsControl x:Name="ProfilesList">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource CryptoCard}" Width="400" Margin="0,0,0,16" Cursor="Hand" MouseLeftButtonUp="Profile_Click" Background="{StaticResource BgCard}">
+                        <Border Style="{StaticResource CryptoCard}" Width="400" Margin="8,8,8,20" Cursor="Hand" MouseLeftButtonUp="Profile_Click" Background="{StaticResource BgCard}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource NeonGlowGradient}" Margin="0,0,16,0">
                                     <TextBlock Text="👤" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>

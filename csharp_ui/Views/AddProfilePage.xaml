@@ -2,6 +2,16 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Title="AddProfilePage">
+    <Page.RenderTransform>
+        <TranslateTransform Y="0"/>
+    </Page.RenderTransform>
+
+    <Page.Triggers>
+        <EventTrigger RoutedEvent="Page.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource FadeInAnimation}"/>
+        </EventTrigger>
+    </Page.Triggers>
+
     <Grid Margin="40">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

@@ -164,7 +164,7 @@ def start_server(host: str = "0.0.0.0", port: int = 8000):
     print(f"  ReDoc  : http://localhost:{port}/redoc")
     print(f"  Durdurmak icin: Ctrl+C\n")
 
-    uvicorn.run("api_server:app", host=host, port=port, reload=True)
+    uvicorn.run("api_server:app", host=host, port=port, reload=False)
 
 
 def main():

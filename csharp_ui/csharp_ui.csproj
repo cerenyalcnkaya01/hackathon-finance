@@ -13,5 +13,10 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Resource Include="Assets\borsa.png" />
+    <Resource Include="Assets\borsa.ico" />
+  </ItemGroup>
 
 </Project>

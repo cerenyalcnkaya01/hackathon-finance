@@ -8,6 +8,7 @@ from typing import List
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 OUTPUT_DIR = os.path.join(ROOT_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# Mount static files
+WEB_UI_DIR = os.path.join(ROOT_DIR, "web_ui")
+ICON_DIR = os.path.join(ROOT_DIR, "icon")
+if os.path.exists(WEB_UI_DIR):
+    app.mount("/static", StaticFiles(directory=WEB_UI_DIR), name="static")
+if os.path.exists(ICON_DIR):
+    app.mount("/icons", StaticFiles(directory=ICON_DIR), name="icons")
+
 class AnalyzeRequest(BaseModel):
     symbol: str; period: str = "3mo"; interval: str = "1d"
     save_chart: bool = True; ai_analysis: bool = False; ai_model: str = "llama3.1"
@@ -40,8 +49,8 @@ class ScreenRequest(BaseModel):
     symbols: List[str] = []; preset: str = "bist30"; period: str = "3mo"
     screen_type: str = "summary"; indicators: List[str] = []
 
-@app.get("/", tags=["System"])
-def root():
+@app.get("/api/info", tags=["System"])
+def system_info():
     return {"service": "Borsa AI Bot", "status": "online", "engine": get_engine_info(), "timestamp": datetime.now().isoformat()}
 
 @app.get("/api/health", tags=["System"])
@@ -66,7 +75,21 @@ def stock_info(symbol: str):
 def analyze(req: AnalyzeRequest):
     result = analyze_stock(req.symbol, req.period, req.interval, req.save_chart, False)
     if "error" in result: raise HTTPException(404, result["error"])
-    if req.ai_analysis: result["ai"] = generate_ai_analysis(result, req.ai_model)
+    
+    # Align with C# frontend expectations
+    result["period"] = req.period
+    result["indicators"] = {
+        "RSI": result.get("rsi"),
+        "MACD": result.get("macd"),
+        "SMA": result.get("sma_14"),
+        "EMA": result.get("ema_14")
+    }
+    result["signals"] = {
+        "macd": result.get("signal"), # C# code uses Signals["macd"] for the signal text
+        "rsi": "Aşırı Satım" if (result.get("rsi") or 50) <= 30 else "Aşırı Alım" if (result.get("rsi") or 50) >= 70 else "Nötr"
+    }
+    
+    if req.ai_analysis: result["ai"] = generate_ai_analysis(result, req.ai_model)["ai_commentary"]
     return result
 
 @app.post("/api/analyze/multi", tags=["Analysis"])
@@ -101,10 +124,13 @@ def screen(req: ScreenRequest):
             "Sembol": "symbol",
             "Sektör": "sector",
             "Son Fiyat": "close",
+            "En Yüksek": "high",
+            "En Düşük": "low",
             "RSI": "rsi",
             "RSI_14": "rsi",
             "MACD": "macd",
             "Sinyal": "signal",
+            "ChangePct": "change_pct",
             "Score": "score"
         }
         df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})

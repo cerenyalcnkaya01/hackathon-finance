@@ -2,12 +2,23 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Borsa AI Dashboard"
+        Icon="Assets\borsa.ico"
         Height="820" Width="1320"
         MinHeight="700" MinWidth="1100"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        ResizeMode="CanResizeWithGrip">
+        ResizeMode="CanResizeWithGrip"
+        RenderOptions.BitmapScalingMode="HighQuality">
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.6"/>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
 
     <!-- Root border: rounded window frame -->
     <Border Background="{StaticResource BgDeep}"
@@ -40,11 +51,7 @@
 
                     <!-- Logo -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="22" Height="22" CornerRadius="6"
-                                Background="{StaticResource NeonGlowGradient}" Margin="0,0,8,0">
-                            <TextBlock Text="₿" Foreground="#0A0D0F" FontSize="12" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
+                        <Image Source="Assets/borsa.png" Width="24" Height="24" Margin="0,0,8,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <TextBlock Text="Borsa AI" Foreground="{StaticResource TextPrimary}"
                                    FontFamily="Segoe UI" FontSize="14" FontWeight="Bold"
                                    VerticalAlignment="Center"/>

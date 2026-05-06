@@ -43,6 +43,71 @@ def fetch_historical_data(ticker_symbol: str, start_date: str, end_date: str, in
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "output", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
+def fetch_bulk_data(symbols: list, period: str = "1mo", interval: str = "1d") -> dict:
+    """
+    Birden fazla sembol için verileri küçük gruplar halinde çeker.
+    Hangi sembolün takıldığını anlamak ve sistemin kilitlenmesini önlemek için optimize edilmiştir.
+    """
+    if not symbols: return {}
+    
+    chunk_size = 15  # Küçük parçalar halinde çekerek kilitlenmeyi önle
+    results = {}
+    
+    total = len(symbols)
+    logger.info(f"{total} sembol için parçalı veri çekme başlatılıyor (Grup boyutu: {chunk_size})...")
+    
+    for i in range(0, total, chunk_size):
+        chunk = symbols[i : i + chunk_size]
+        logger.info(f"[{i}/{total}] {len(chunk)} sembol indiriliyor...")
+        
+        try:
+            # yfinance download bazen çok fazla sembolde kilitlenebiliyor
+            data = yf.download(
+                chunk, 
+                period=period, 
+                interval=interval, 
+                group_by='ticker', 
+                threads=True, 
+                progress=False,
+                timeout=20
+            )
+            
+            if data.empty: continue
+
+            for symbol in chunk:
+                try:
+                    if len(chunk) == 1:
+                        # Tek sembol durumunda yf.download(group_by='ticker') 
+                        # bazen MultiIndex ('SYM', 'Close') bazen direkt 'Close' dönebilir.
+                        if isinstance(data.columns, pd.MultiIndex):
+                            df = data[symbol].dropna()
+                        else:
+                            df = data.dropna()
+                    else:
+                        if symbol in data:
+                            df = data[symbol].dropna()
+                        else:
+                            continue
+                            
+                    if not df.empty:
+                        # Kolon isimlerini temizle (MultiIndex ise 'Close' seviyesine indir)
+                        if isinstance(df.columns, pd.MultiIndex):
+                            df.columns = df.columns.get_level_values(-1)
+                        
+                        # Temel kolonlar var mı kontrol et
+                        if 'Close' in df.columns:
+                            df.index = pd.to_datetime(df.index, utc=True)
+                            results[symbol] = df
+                except Exception as sym_ex:
+                    logger.warning(f"{symbol} verisi işlenirken hata: {sym_ex}")
+                            
+        except Exception as e:
+            logger.error(f"Grup indirme hatası ({chunk[0]}...): {e}")
+            continue
+            
+    logger.info(f"Veri çekme tamamlandı. {len(results)}/{total} sembol başarıyla alındı.")
+    return results
+
 def fetch_recent_data(ticker_symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
     """
     Verileri SSD üzerinde cache'ler. Eğer cache varsa sadece eksik günleri indirir.

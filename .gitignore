@@ -20,6 +20,11 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+build/
+dist/
+out/
+.next/
+node_modules/
 
 # Visual Studio files
 .vs/
@@ -32,7 +37,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+# build/  <-- Moved to Build results
 develop-eggs/
 dist/
 downloads/
@@ -92,3 +97,25 @@ models/
 
 # Pipeline output (charts, JSON)
 output/
+ekleme/*.html
+ekleme/*.json
+*.html
+*.json
+!pyrightconfig.json
+!tsconfig.json
+!package.json
+!package-lock.json
+
+# Reports and Coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/

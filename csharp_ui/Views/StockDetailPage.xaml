@@ -4,6 +4,15 @@
       xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
       xmlns:vm="clr-namespace:csharp_ui.ViewModels"
       Title="StockDetailPage">
+    <Page.RenderTransform>
+        <TranslateTransform Y="0"/>
+    </Page.RenderTransform>
+
+    <Page.Triggers>
+        <EventTrigger RoutedEvent="Page.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource FadeInAnimation}"/>
+        </EventTrigger>
+    </Page.Triggers>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -186,7 +195,16 @@
                                 <DataGridTextColumn Header="Sektör" Binding="{Binding Sector}" Width="120"/>
                                 <DataGridTextColumn Header="Son Fiyat" Binding="{Binding Close, StringFormat={}{0:N2}}" Width="100"/>
                                 <DataGridTextColumn Header="RSI" Binding="{Binding Rsi, StringFormat={}{0:F1}}" Width="80"/>
-                                <DataGridTextColumn Header="Sinyal" Binding="{Binding Signal}" Width="100"/>
+                                <DataGridTemplateColumn Header="Sinyal" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Ellipse Width="10" Height="10" Fill="{Binding SignalColor, Converter={StaticResource StringToBrushConv}}" Margin="4,0,8,0"/>
+                                                <TextBlock Text="{Binding Signal}" Foreground="{Binding SignalColor, Converter={StaticResource StringToBrushConv}}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="Değişim" Width="120">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>

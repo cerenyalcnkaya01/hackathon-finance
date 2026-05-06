@@ -39,6 +39,8 @@ namespace csharp_ui.Services
         [JsonProperty("symbol")]  public string Symbol  { get; set; } = "";
         [JsonProperty("sector")]  public string Sector  { get; set; } = "";
         [JsonProperty("close")]   public double Close   { get; set; }
+        [JsonProperty("high")]    public double High    { get; set; }
+        [JsonProperty("low")]     public double Low     { get; set; }
         [JsonProperty("rsi")]     public double Rsi     { get; set; }
         [JsonProperty("macd")]    public double Macd    { get; set; }
         [JsonProperty("signal")]  public string Signal  { get; set; } = "";
@@ -83,11 +85,17 @@ namespace csharp_ui.Services
             catch { return null; }
         }
 
-        public async Task<List<ScreenResult>> GetScreenAsync(string preset = "bist30", string screenType = "summary", string period = "3mo", List<string>? indicators = null)
+        public async Task<List<ScreenResult>> GetScreenAsync(string preset = "bist30", string screenType = "summary", string period = "3mo", List<string>? indicators = null, List<string>? symbols = null)
         {
             try
             {
-                var payload = new { preset, screen_type = screenType, period, indicators = indicators ?? new List<string>() };
+                var payload = new { 
+                    preset, 
+                    screen_type = screenType, 
+                    period, 
+                    indicators = indicators ?? new List<string>(),
+                    symbols = symbols ?? new List<string>()
+                };
                 var response = await _http.PostAsJsonAsync("/api/screen", payload);
                 var json = await response.Content.ReadAsStringAsync();
                 var obj = JObject.Parse(json);

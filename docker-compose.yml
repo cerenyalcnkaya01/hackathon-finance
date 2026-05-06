@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: borsa-ai-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: always
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: borsa-ai-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+
+volumes:
+  ollama_data:
