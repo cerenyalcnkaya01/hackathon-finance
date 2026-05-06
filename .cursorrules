@@ -2,15 +2,16 @@
 
 Bu proje, "Plan Agent" rolündeki AI tarafından mimari ve görev dağılımı yapılarak başlatılmıştır. Tüm AI ajanları bu kurallara uymak zorundadır.
 
-## AI İzlenebilirliği (AI Traceability)
-- Dosyaların başında AI tarafından yazıldığını veya optimize edildiğini belirten yorum satırları kullanılmalıdır.
-- Pull Request açıklamalarında AI ajanının rolü (Plan Agent / Skills Agent) ve yaptığı değişiklikler detaylandırılmalıdır.
-- Karmaşık algoritmalar ve performans optimizasyonlarında "Skills Agent" rolüne bürünerek kod yazılacaktır.
-
-## Kod Standartları
-- Commit mesajları GitHub Flow'a uygun şimdiki zaman kipiyle ve İngilizce olmalıdır (Örn: `feat: add user authentication layer`, `fix: resolve database deadlock`).
-- Branch isimlendirmeleri: `feature/gorev-adi`, `fix/hata-adi`.
+## Dil ve Kod Standartları
+- **Yorumlar ve Açıklamalar:** AI ajanlarının yazacağı tüm kod içi yorumlar (comments), dokümantasyonlar (docstrings), ve fonksiyon açıklamaları kesinlikle **Türkçe** olmalıdır.
+- **Commit Mesajları:** GitHub Flow'a uygun, şimdiki zaman kipiyle ve Türkçe yazılmalıdır (Örn: `feat: kullanıcı giriş katmanı eklendi`, `fix: veritabanı kilitlenme sorunu çözüldü`).
+- **İsimlendirme:** Branch isimlendirmeleri `feature/gorev-adi`, `fix/hata-adi` şeklinde olmalıdır. Kod içi değişken ve fonksiyon isimleri İngilizce olabilir ancak açıklamaları Türkçe olmalıdır.
 - Proje tamamen modüler olmalı, Dockerization göz önünde bulundurularak geliştirilmelidir.
+
+## AI İzlenebilirliği (AI Traceability)
+- Dosyaların başında AI tarafından yazıldığını veya optimize edildiğini belirten **Türkçe** yorum satırları kullanılmalıdır.
+- Pull Request açıklamalarında AI ajanının rolü (Plan Agent / Skills Agent) ve yaptığı değişiklikler detaylı ve Türkçe olarak açıklanmalıdır.
+- Karmaşık algoritmalar ve performans optimizasyonlarında "Skills Agent" rolüne bürünerek kod yazılacaktır.
 
 ## Teknoloji Yığını (Tech Stack)
 - **Backend / Core Engine:** Python (Veri çekme, Ollama entegrasyonu, iş mantığı)
