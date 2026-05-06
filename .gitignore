@@ -89,3 +89,6 @@ Thumbs.db
 # LLM Models
 models/
 *.gguf
+
+# Pipeline output (charts, JSON)
+output/

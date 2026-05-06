@@ -1,4 +1,4 @@
-﻿# Geliştirme Yol Haritası (ROADMAP)
+# Geliştirme Yol Haritası (ROADMAP)
 
 > **Oluşturan:** Plan Agent (AI)
 > **Tarih:** 2026-05-06
@@ -10,9 +10,12 @@ Aşağıdaki yol haritası, 3 kişilik geliştirici ekibi ve AI ajanlarının i�
 - [x] `.gitignore`, `.cursorrules` ve mimari dokümanların (`ARCHITECTURE.md`, `ROADMAP.md`) oluşturulması.
 - [x] GitHub Issue şablonlarının hazırlanması.
 
-## Aşama 2: Veri Çekme ve Analiz Modülü (Python) - [Bekliyor]
-- [ ] Borsa verilerini çekmek için Python scriptlerinin (örn. `yfinance` ile) hazırlanması.
+## Aşama 2: Veri Çekme ve Analiz Modülü (Python) - [Devam Ediyor]
+- [x] Borsa verilerini çekmek için Python scriptlerinin (örn. `yfinance` ile) hazırlanması.
 - [x] Temel teknik analiz indikatörlerinin (RSI, MACD, MA) hesaplanması.
+- [x] Çoklu hisse tarama modülü (Stock Screener) — RSI/MACD filtreleme.
+- [x] Uçtan uca pipeline (veri çekme → indikatör → grafik) entegrasyonu.
+- [x] `requirements.txt` oluşturulması.
 - **AI Katkısı (Skills Agent):** İndikatör hesaplama algoritmalarının optimizasyonu.
 
 ## Aşama 3: AI Model Entegrasyonu (Ollama) - [Bekliyor]
