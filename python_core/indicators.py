@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 
 def calculate_sma(df: pd.DataFrame, window: int = 14, column: str = "Close") -> pd.Series:
     """

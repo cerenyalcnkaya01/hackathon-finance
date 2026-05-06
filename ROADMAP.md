@@ -1,4 +1,4 @@
-# Geliştirme Yol Haritası (ROADMAP)
+﻿# Geliştirme Yol Haritası (ROADMAP)
 
 > **Oluşturan:** Plan Agent (AI)
 > **Tarih:** 2026-05-06

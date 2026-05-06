@@ -1,4 +1,4 @@
-# Borsa AI Botu - SolveX Hackathon 2026
+﻿# Borsa AI Botu - SolveX Hackathon 2026
 
 Bu proje, SolveX AI Hackathon 2026 şartnamesine uygun olarak geliştirilen, "AI-Augmented Development" yaklaşımlarını benimseyen bir finansal analiz ve borsa tarama botudur.
 

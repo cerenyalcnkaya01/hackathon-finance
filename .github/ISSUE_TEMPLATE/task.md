@@ -1,4 +1,4 @@
-name: Feature Request / Task
+﻿name: Feature Request / Task
 about: Yeni bir özellik eklemek veya görev atamak için kullanın
 title: '[FEAT] '
 labels: enhancement, help wanted

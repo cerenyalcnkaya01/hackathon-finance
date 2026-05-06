@@ -1,4 +1,4 @@
-# Proje Mimarisi (ARCHITECTURE)
+﻿# Proje Mimarisi (ARCHITECTURE)
 
 > **Oluşturan:** Plan Agent (AI)
 > **Tarih:** 2026-05-06
