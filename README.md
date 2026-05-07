@@ -1,4 +1,5 @@
 # Borsa AI Botu - SolveX Hackathon 2026
+![Version](https://img.shields.io/badge/version-v1.2-blue.svg)
 
 ![Hackathon Banner](https://nocodearea.com/wp-content/uploads/2024/01/nocodearea-logo-dark.png)
 
