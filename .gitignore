@@ -30,6 +30,9 @@ node_modules/
 .vs/
 *.pdb
 *.idb
+*.opendb
+*.db-shm
+*.db-wal
 
 # Python
 __pycache__/
@@ -37,7 +40,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-# build/  <-- Moved to Build results
 develop-eggs/
 dist/
 downloads/
@@ -61,8 +63,9 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
-# C++
+# C++ and Compiled Binaries
 *.o
 *.obj
 *.exe
@@ -71,6 +74,11 @@ venv.bak/
 *.out
 *.app
 *.dylib
+*.pyd
+*.exp
+*.ilk
+*.res
+*.ncb
 
 # Docker
 .docker/
@@ -95,27 +103,22 @@ Thumbs.db
 models/
 *.gguf
 
-# Pipeline output (charts, JSON)
+# Pipeline output & Caches (charts, JSON)
 output/
-ekleme/*.html
 ekleme/*.json
-*.html
+ekleme/*.html
 *.json
 !pyrightconfig.json
 !tsconfig.json
 !package.json
 !package-lock.json
+!*.csproj
+!*.sln
+*.cache
+*.json.bak
 
-# Reports and Coverage
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
+
+# User specific
+*.tmp
+*.temp
+

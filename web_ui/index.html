@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borsa AI Dashboard | SolveX Hackathon 2026</title>
+    <link rel="icon" type="image/x-icon" href="/icons/borsa.ico">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div class="glass-bg"></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="/icons/borsa.png" alt="Borsa AI Logo" class="logo-img">
+                <span>BORSA AI</span>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active" data-page="dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></li>
+                    <li data-page="screening"><i class="fas fa-filter"></i> <span>Hisse Tarama</span></li>
+                    <li data-page="analysis"><i class="fas fa-microchip"></i> <span>AI Analiz</span></li>
+                    <li data-page="settings"><i class="fas fa-cog"></i> <span>Ayarlar</span></li>
+                </ul>
+            </nav>
+            <div class="status-panel">
+                <div class="status-item">
+                    <span>API:</span>
+                    <span id="api-status" class="status-dot offline"></span>
+                </div>
+                <div class="status-item">
+                    <span>Ollama:</span>
+                    <span id="ollama-status" class="status-dot offline"></span>
+                </div>
+                <div class="status-item">
+                    <span>Engine:</span>
+                    <span id="engine-status">Python</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header>
+                <div class="search-bar">
+                    <input type="text" id="stock-search" placeholder="Hisse kodu ara... (örn: THYAO.IS)">
+                    <button id="btn-search"><i class="fas fa-search"></i></button>
+                </div>
+                <div class="user-profile">
+                    <span id="current-time"></span>
+                    <div class="avatar"><i class="fas fa-user"></i></div>
+                </div>
+            </header>
+
+            <section id="dashboard-page" class="page active">
+                <div class="market-overview" id="market-overview">
+                    <!-- Progressively loaded stock cards will go here -->
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Teknik Grafik</h3>
+                            <div class="chart-controls">
+                                <select id="period-select">
+                                    <option value="1mo">1 Ay</option>
+                                    <option value="3mo" selected>3 Ay</option>
+                                    <option value="6mo">6 Ay</option>
+                                    <option value="1y">1 Yıl</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="main-chart" class="chart-container">
+                            <div class="loader-container"><div class="loader"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="card info-card">
+                        <div class="card-header"><h3><i class="fas fa-info-circle"></i> Hisse Bilgileri</h3></div>
+                        <div id="stock-info-content" class="info-content">
+                            <p class="placeholder-text">Bir hisse aratarak başlayın.</p>
+                        </div>
+                    </div>
+
+                    <div class="card signals-card">
+                        <div class="card-header"><h3><i class="fas fa-signal"></i> Teknik Sinyaller</h3></div>
+                        <div class="signals-grid">
+                            <div class="signal-item">
+                                <span class="label">RSI (14)</span>
+                                <span id="val-rsi" class="value">--</span>
+                            </div>
+                            <div class="signal-item">
+                                <span class="label">MACD</span>
+                                <span id="val-macd" class="value">--</span>
+                            </div>
+                            <div class="signal-item" style="grid-column: span 2">
+                                <span class="label">Sinyal Durumu</span>
+                                <span id="val-signal" class="value badge">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card ai-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-robot"></i> AI Yorumu</h3>
+                            <button id="btn-ai-analyze" class="btn-primary-sm">AI Analiz Et</button>
+                        </div>
+                        <div id="ai-commentary" class="ai-content">
+                            <p class="placeholder-text">Yapay zeka analizi için butona tıklayın.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="screening-page" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Hisse Tarama</h3>
+                        <div class="screening-controls">
+                            <select id="screen-preset">
+                                <option value="bist30">BIST 30</option>
+                                <option value="us_tech">US Tech</option>
+                            </select>
+                            <select id="screen-type">
+                                <option value="summary">Genel Özet</option>
+                                <option value="rsi_oversold">RSI Aşırı Satım</option>
+                                <option value="macd_crossover">MACD Kesişimi</option>
+                            </select>
+                            <button id="btn-run-screen" class="btn-primary">Taramayı Başlat</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="screening-table">
+                            <thead>
+                                <tr>
+                                    <th>Sembol</th>
+                                    <th>Sektör</th>
+                                    <th>Fiyat</th>
+                                    <th>RSI</th>
+                                    <th>MACD</th>
+                                    <th>Sinyal</th>
+                                    <th>Puan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="screening-body">
+                                <tr><td colspan="7" class="text-center">Tarama verisi yok.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
