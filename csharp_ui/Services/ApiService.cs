@@ -65,24 +65,112 @@ namespace csharp_ui.Services
             _http = new HttpClient { BaseAddress = new Uri(BaseUrl), Timeout = TimeSpan.FromSeconds(30) };
         }
 
+        public void EnsureBackendStarted()
+        {
+            try
+            {
+                // Check if already running
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromMilliseconds(500);
+                    var response = client.GetAsync(BaseUrl + "/api/health").Result;
+                    if (response.IsSuccessStatusCode) return;
+                }
+            }
+            catch
+            {
+                // Not running, attempt to find root
+                string? currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                string? rootDir = null;
+
+                for (int i = 0; i < 5 && currentDir != null; i++)
+                {
+                    if (System.IO.File.Exists(System.IO.Path.Combine(currentDir, "main.py")))
+                    {
+                        rootDir = currentDir;
+                        break;
+                    }
+                    currentDir = System.IO.Path.GetDirectoryName(currentDir);
+                }
+
+                if (rootDir == null) rootDir = AppDomain.CurrentDomain.BaseDirectory;
+
+                // Check for python and basic requirements
+                bool needsSetup = false;
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = "-c \"import fastapi, uvicorn, yfinance\"",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    var p = System.Diagnostics.Process.Start(psi);
+                    p?.WaitForExit();
+                    if (p?.ExitCode != 0) needsSetup = true;
+                }
+                catch { needsSetup = true; }
+
+                if (needsSetup)
+                {
+                    // Launch Setup Wizard
+                    string setupPath = System.IO.Path.Combine(rootDir, "bin", "Setup", "BorsaAI.Setup.exe");
+                    if (System.IO.File.Exists(setupPath))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = setupPath, UseShellExecute = true });
+                        return; // Don't try to start backend yet
+                    }
+                }
+
+                // Start via Python local
+                try
+                {
+                    var startInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = "main.py",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                        WorkingDirectory = rootDir
+                    };
+                    System.Diagnostics.Process.Start(startInfo);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to start backend: {ex.Message}");
+                }
+            }
+        }
+
         public async Task<HealthStatus?> GetHealthAsync()
         {
             try
             {
-                var json = await _http.GetStringAsync("/api/health");
+                var response = await _http.GetAsync("/api/health");
+                if (!response.IsSuccessStatusCode) return null;
+                var json = await response.Content.ReadAsStringAsync();
                 return JsonConvert.DeserializeObject<HealthStatus>(json);
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Health Check Error: {ex.Message}");
+                return null;
+            }
         }
 
-        public async Task<StockDataResponse?> GetStockDataAsync(string symbol, string period = "3mo", string interval = "1d")
+        public async Task<StockDataResponse> GetStockDataAsync(string symbol, string period = "3mo", string interval = "1d")
         {
-            try
+            var response = await _http.GetAsync($"/api/stock/{symbol}?period={period}&interval={interval}");
+            if (!response.IsSuccessStatusCode)
             {
-                var json = await _http.GetStringAsync($"/api/stock/{symbol}?period={period}&interval={interval}");
-                return JsonConvert.DeserializeObject<StockDataResponse>(json);
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"API Hatası ({response.StatusCode}): {error}");
             }
-            catch { return null; }
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<StockDataResponse>(json);
+            return result ?? throw new Exception("Veri ayrıştırılamadı.");
         }
 
         public async Task<List<ScreenResult>> GetScreenAsync(string preset = "bist30", string screenType = "summary", string period = "3mo", List<string>? indicators = null, List<string>? symbols = null)

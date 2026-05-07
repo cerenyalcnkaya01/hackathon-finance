@@ -137,6 +137,7 @@ namespace csharp_ui.ViewModels
         private async Task InitAsync()
         {
             IsLoading = true;
+            _api.EnsureBackendStarted();
             await CheckHealthAsync();
             if (IsConnected)
             {
@@ -151,18 +152,28 @@ namespace csharp_ui.ViewModels
 
         private async Task CheckHealthAsync()
         {
-            var h = await _api.GetHealthAsync();
-            if (h != null)
+            int retries = 30; // 1 minute total wait time
+            while (retries > 0)
             {
-                IsConnected = true;
-                var ollamaStatus = h.Ollama?["status"]?.ToString() ?? "unknown";
-                StatusText = $"✓ API Bağlı | C++ Motor: {(h.CppEngine ? "Aktif" : "Kapalı")} | AI: {ollamaStatus}";
+                var h = await _api.GetHealthAsync();
+                if (h != null)
+                {
+                    IsConnected = true;
+                    var ollamaStatus = h.Ollama?["status"]?.ToString() ?? "unknown";
+                    StatusText = $"✓ API Bağlı | C++ Motor: {(h.CppEngine ? "Aktif" : "Kapalı")} | AI: {ollamaStatus}";
+                    return;
+                }
+                
+                retries--;
+                if (retries > 0)
+                {
+                    StatusText = $"API Başlatılıyor... ({30 - retries}/30)";
+                    await Task.Delay(2000);
+                }
             }
-            else
-            {
-                IsConnected = false;
-                StatusText = "✗ API'ye bağlanılamadı — uvicorn'un çalıştığından emin olun (port 8000)";
-            }
+
+            IsConnected = false;
+            StatusText = "✗ API'ye bağlanılamadı. Docker'ın (veya uvicorn) çalıştığından emin olun.";
         }
 
         private async Task LoadStockAsync()
@@ -176,9 +187,9 @@ namespace csharp_ui.ViewModels
             try
             {
                 var data = await _api.GetStockDataAsync(symbol, SelectedPeriod);
-                if (data?.Data == null || data.Data.Count == 0)
+                if (data == null || data.Data == null || data.Data.Count == 0)
                 {
-                    CurrentPrice = "Veri yok";
+                    CurrentPrice = "Veri yok (Liste boş)";
                     IsLoading = false;
                     return;
                 }
