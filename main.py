@@ -53,7 +53,7 @@ def print_banner():
 ║   ██║  ██║██║    ██████╔╝╚██████╔╝   ██║                     ║
 ║   ╚═╝  ╚═╝╚═╝    ╚═════╝  ╚═════╝    ╚═╝                     ║
 ║                                                              ║
-║   SolveX AI Hackathon 2026 — Borsa Analiz Botu              ║
+║   SolveX AI Hackathon 2026 — Borsa Analiz Botu v1.2         ║
 ╚══════════════════════════════════════════════════════════════╝
     """
     print(banner)

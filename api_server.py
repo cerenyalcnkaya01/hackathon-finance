@@ -24,7 +24,7 @@ from python_core.cpp_bridge import get_engine_info, is_cpp_available
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Borsa AI Bot API", version="1.0.0", docs_url="/docs")
+app = FastAPI(title="Borsa AI Bot API", version="1.2.0", docs_url="/docs")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 OUTPUT_DIR = os.path.join(ROOT_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
