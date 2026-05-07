@@ -21,10 +21,12 @@ bld/
 [Ll]og/
 [Ll]ogs/
 build/
+bin/
 dist/
 out/
 .next/
 node_modules/
+
 
 # Visual Studio files
 .vs/
